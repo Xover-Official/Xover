@@ -1,0 +1,40 @@
+schemaVersion: 2.2.0
+metadata:
+  name: atlas-cloud-dev
+  version: 1.0.0
+components:
+  - name: tools
+    container:
+      image: golang:1.23
+      memoryLimit: 4Gi
+      mountSources: true
+      args: ["tail", "-f", "/dev/null"]
+      endpoints:
+        - name: http
+          targetPort: 8080
+          exposure: public
+        - name: debug
+          targetPort: 2345
+          exposure: public
+      env:
+        - name: GOPATH
+          value: /go
+commands:
+  - id: install-deps
+    exec:
+      component: tools
+      commandLine: go mod download && go install github.com/go-delve/delve/cmd/dlv@latest
+      workingDir: ${PROJECT_SOURCE}
+  - id: run-atlas
+    exec:
+      component: tools
+      commandLine: go run ./cmd/atlas
+      workingDir: ${PROJECT_SOURCE}
+  - id: debug-atlas
+    exec:
+      component: tools
+      commandLine: dlv debug --headless --listen=:2345 --api-version=2 --accept-multiclient ./cmd/atlas
+      workingDir: ${PROJECT_SOURCE}
+events:
+  postStart:
+    - install-deps

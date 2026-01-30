@@ -1,0 +1,22 @@
+server:
+  mode: "development"
+  port: "8080"
+
+database:
+  dsn: "postgres://user:password@localhost:5432/talos"
+
+analytics:
+  persist_path: "./data/analytics"
+
+ai:
+  open_router_key: "sk-..."
+  devin_key: "..."
+  cache_enabled: true
+
+redis:
+  address: "localhost:6379"
+
+cloud:
+  provider: "aws"
+  region: "us-east-1"
+  dry_run: true
