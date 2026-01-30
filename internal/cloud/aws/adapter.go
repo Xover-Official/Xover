@@ -3,15 +3,18 @@ package aws
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
+	cwtypes "github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
+	"go.uber.org/multierr"
 
 	"github.com/project-atlas/atlas/internal/cloud"
 )
@@ -99,7 +102,7 @@ func (a *Adapter) fetchEC2Instances(ctx context.Context) ([]*cloud.ResourceV2, e
 
 	// Worker pool to fetch metrics concurrently
 	numWorkers := 10
-	jobs := make(chan types.Instance, len(instances))
+	jobs := make(chan ec2types.Instance, len(instances))
 	results := make(chan *cloud.ResourceV2, len(instances))
 	var wg sync.WaitGroup
 
@@ -108,7 +111,12 @@ func (a *Adapter) fetchEC2Instances(ctx context.Context) ([]*cloud.ResourceV2, e
 		go func() {
 			defer wg.Done()
 			for instance := range jobs {
-				metrics := a.getEC2Metrics(ctx, *instance.InstanceId)
+				metrics, err := a.getEC2Metrics(ctx, *instance.InstanceId)
+				if err != nil {
+					log.Printf("failed to get metrics for instance %s: %v", *instance.InstanceId, err)
+					continue
+				}
+
 				cpu, _ := metrics["cpu_usage"].(float64)
 				mem, _ := metrics["memory_usage"].(float64)
 				netIn, _ := metrics["network_in"].(float64)
@@ -227,47 +235,58 @@ func (a *Adapter) stopEC2Instance(ctx context.Context, instanceID string) (strin
 }
 
 // getEC2Metrics fetches real CloudWatch metrics for an EC2 instance
-func (a *Adapter) getEC2Metrics(ctx context.Context, instanceID string) map[string]interface{} {
-	// Get CPU utilization from CloudWatch
-	cpuResult, err := a.cwClient.GetMetricStatistics(ctx, &cloudwatch.GetMetricStatisticsInput{
-		Namespace:  aws.String("AWS/EC2"),
-		MetricName: aws.String("CPUUtilization"),
-		Dimensions: []types.Dimension{
-			{
-				Name:  aws.String("InstanceId"),
-				Value: aws.String(instanceID),
-			},
-		},
-		StartTime:  aws.Time(time.Now().Add(-1 * time.Hour)),
-		EndTime:    aws.Time(time.Now()),
-		Period:     aws.Int32(300), // 5 minutes
-		Statistics: []types.Statistic{types.StatisticAverage},
-	})
+func (a *Adapter) getEC2Metrics(ctx context.Context, instanceID string) (map[string]interface{}, error) {
+	var wg sync.WaitGroup
+	var cpuResult, netInResult, netOutResult *cloudwatch.GetMetricStatisticsOutput
+	var cpuErr, netInErr, netOutErr error
 
-	// Get Network In from CloudWatch
-	netInResult, err := a.cwClient.GetMetricStatistics(ctx, &cloudwatch.GetMetricStatisticsInput{
-		Namespace:  aws.String("AWS/EC2"),
-		MetricName: aws.String("NetworkIn"),
-		Dimensions: []types.Dimension{{Name: aws.String("InstanceId"), Value: aws.String(instanceID)}},
-		StartTime:  aws.Time(time.Now().Add(-1 * time.Hour)),
-		EndTime:    aws.Time(time.Now()),
-		Period:     aws.Int32(3600), // 1 hour
-		Statistics: []types.Statistic{types.StatisticSum},
-	})
+	wg.Add(3)
 
-	// Get Network Out from CloudWatch
-	netOutResult, err := a.cwClient.GetMetricStatistics(ctx, &cloudwatch.GetMetricStatisticsInput{
-		Namespace:  aws.String("AWS/EC2"),
-		MetricName: aws.String("NetworkOut"),
-		Dimensions: []types.Dimension{{Name: aws.String("InstanceId"), Value: aws.String(instanceID)}},
-		StartTime:  aws.Time(time.Now().Add(-1 * time.Hour)),
-		EndTime:    aws.Time(time.Now()),
-		Period:     aws.Int32(3600), // 1 hour
-		Statistics: []types.Statistic{types.StatisticSum},
-	})
+	go func() {
+		defer wg.Done()
+		cpuResult, cpuErr = a.cwClient.GetMetricStatistics(ctx, &cloudwatch.GetMetricStatisticsInput{
+			Namespace:  aws.String("AWS/EC2"),
+			MetricName: aws.String("CPUUtilization"),
+			Dimensions: []cwtypes.Dimension{{Name: aws.String("InstanceId"), Value: aws.String(instanceID)}},
+			StartTime:  aws.Time(time.Now().Add(-1 * time.Hour)),
+			EndTime:    aws.Time(time.Now()),
+			Period:     aws.Int32(300), // 5 minutes
+			Statistics: []cwtypes.Statistic{cwtypes.StatisticAverage},
+		})
+	}()
+
+	go func() {
+		defer wg.Done()
+		netInResult, netInErr = a.cwClient.GetMetricStatistics(ctx, &cloudwatch.GetMetricStatisticsInput{
+			Namespace:  aws.String("AWS/EC2"),
+			MetricName: aws.String("NetworkIn"),
+			Dimensions: []cwtypes.Dimension{{Name: aws.String("InstanceId"), Value: aws.String(instanceID)}},
+			StartTime:  aws.Time(time.Now().Add(-1 * time.Hour)),
+			EndTime:    aws.Time(time.Now()),
+			Period:     aws.Int32(3600), // 1 hour
+			Statistics: []cwtypes.Statistic{cwtypes.StatisticSum},
+		})
+	}()
+
+	go func() {
+		defer wg.Done()
+		netOutResult, netOutErr = a.cwClient.GetMetricStatistics(ctx, &cloudwatch.GetMetricStatisticsInput{
+			Namespace:  aws.String("AWS/EC2"),
+			MetricName: aws.String("NetworkOut"),
+			Dimensions: []cwtypes.Dimension{{Name: aws.String("InstanceId"), Value: aws.String(instanceID)}},
+			StartTime:  aws.Time(time.Now().Add(-1 * time.Hour)),
+			EndTime:    aws.Time(time.Now()),
+			Period:     aws.Int32(3600), // 1 hour
+			Statistics: []cwtypes.Statistic{cwtypes.StatisticSum},
+		})
+	}()
+
+	wg.Wait()
+
+	err := multierr.Combine(cpuErr, netInErr, netOutErr)
 
 	netInBytes := 0.0
-	if err == nil && len(netInResult.Datapoints) > 0 {
+	if netInErr == nil && netInResult != nil && len(netInResult.Datapoints) > 0 {
 		latest := netInResult.Datapoints[0]
 		if latest.Sum != nil {
 			netInBytes = *latest.Sum
@@ -275,7 +294,7 @@ func (a *Adapter) getEC2Metrics(ctx context.Context, instanceID string) map[stri
 	}
 
 	netOutBytes := 0.0
-	if err == nil && len(netOutResult.Datapoints) > 0 {
+	if netOutErr == nil && netOutResult != nil && len(netOutResult.Datapoints) > 0 {
 		latest := netOutResult.Datapoints[0]
 		if latest.Sum != nil {
 			netOutBytes = *latest.Sum
@@ -283,21 +302,22 @@ func (a *Adapter) getEC2Metrics(ctx context.Context, instanceID string) map[stri
 	}
 
 	cpuUsage := 0.0
-	if err == nil && len(cpuResult.Datapoints) > 0 {
-		// Get the latest datapoint
+	if cpuErr == nil && cpuResult != nil && len(cpuResult.Datapoints) > 0 {
 		latest := cpuResult.Datapoints[0]
 		if latest.Average != nil {
 			cpuUsage = *latest.Average
 		}
 	}
 
-	return map[string]interface{}{
+	metrics := map[string]interface{}{
 		"cpu_usage":    cpuUsage,
 		"memory_usage": 0.0, // Memory metrics require custom CloudWatch agent
 		"network_in":   netInBytes,
 		"network_out":  netOutBytes,
 		"timestamp":    time.Now(),
 	}
+
+	return metrics, err
 }
 
 func (a *Adapter) resizeEC2Instance(ctx context.Context, instanceID string) (string, error) {

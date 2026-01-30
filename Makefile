@@ -1,6 +1,6 @@
 # Talos Makefile
 
-.PHONY: all build test test-e2e clean run
+.PHONY: all build test test-e2e clean run run-engine
 
 BINARY_NAME=talos
 BUILD_DIR=bin
@@ -25,6 +25,10 @@ test-e2e:
 run: build
 	@echo "🔥 Starting Talos..."
 	@./$(BUILD_DIR)/$(BINARY_NAME)
+
+run-engine:
+	@echo "🔥 Starting Talos Engine (Dev Mode)..."
+	@go run ./cmd/atlas/main.go
 
 clean:
 	@echo "🧹 Cleaning up..."
