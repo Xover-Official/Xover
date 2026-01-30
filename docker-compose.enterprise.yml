@@ -1,0 +1,195 @@
+version: '3.8'
+
+services:
+  # PostgreSQL - Enterprise Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: talos-postgres
+    environment:
+      POSTGRES_USER: talos
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_enterprise_password}
+      POSTGRES_DB: talos_ledger
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:-replica_password}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U talos"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - talos-network
+
+  # Redis - Task Queue & Caching
+  redis:
+    image: redis:7-alpine
+    container_name: talos-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password}
+    volumes:
+      - redisdata:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - talos-network
+
+  # API Gateway / Manager
+  talos-manager:
+    build: 
+      context: .
+      dockerfile: Dockerfile.enterprise
+    container_name: talos-manager
+    command: ./talos manager
+    environment:
+      - TALOS_MODE=enterprise
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=talos
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-secure_enterprise_password}
+      - DB_NAME=talos_ledger
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
+      - JWT_SECRET=${JWT_SECRET:-your_jwt_secret_key}
+      - LOG_LEVEL=info
+    ports:
+      - "8080:8080"
+      - "9090:9090"  # Metrics
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+    networks:
+      - talos-network
+    restart: unless-stopped
+
+  # Worker Nodes (Horizontal Scaling)
+  talos-worker:
+    build: 
+      context: .
+      dockerfile: Dockerfile.enterprise
+    command: ./talos worker
+    environment:
+      - TALOS_MODE=enterprise
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=talos
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-secure_enterprise_password}
+      - DB_NAME=talos_ledger
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
+      - WORKER_ID=${WORKER_ID:-worker-1}
+      - LOG_LEVEL=info
+    depends_on:
+      talos-manager:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+    networks:
+      - talos-network
+    restart: unless-stopped
+    deploy:
+      replicas: 3  # Enterprise Scale: 3 concurrent workers
+
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: talos-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheusdata:/prometheus
+    ports:
+      - "9091:9090"
+    networks:
+      - talos-network
+    restart: unless-stopped
+
+  # Grafana - Dashboard & Visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: talos-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    ports:
+      - "3000:3000"
+    networks:
+      - talos-network
+    restart: unless-stopped
+
+  # Jaeger - Distributed Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: talos-jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # HTTP collector
+      - "14250:14250"  # gRPC collector
+    networks:
+      - talos-network
+    restart: unless-stopped
+
+  # Nginx - Load Balancer
+  nginx:
+    image: nginx:alpine
+    container_name: talos-nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    ports:
+      - "443:443"
+      - "80:80"
+    depends_on:
+      - talos-manager
+    networks:
+      - talos-network
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+    driver: local
+  redisdata:
+    driver: local
+  prometheusdata:
+    driver: local
+  grafanadata:
+    driver: local
+
+networks:
+  talos-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

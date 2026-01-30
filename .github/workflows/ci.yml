@@ -1,0 +1,119 @@
+name: Talos CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.22'
+
+    - name: Install Dependencies
+      run: go mod download
+
+    - name: Run Linter
+      run: |
+        go fmt ./...
+        go vet ./...
+
+    - name: Run Unit Tests
+      run: go test -v ./...
+
+    - name: Build Guardian
+      run: go build -v ./cmd/atlas/main.go
+
+    - name: Build Dashboard
+      run: go build -v ./cmd/dashboard/main.go
+
+  build-push:
+    name: Build & Push Docker
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Log in to the Container registry
+      uses: docker/login-action@v2
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and Push
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: Dockerfile
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/guardian:latest
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/guardian:${{ github.sha }}
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/worker:latest
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/worker:${{ github.sha }}
+
+  deploy:
+    name: Deploy to K8s
+    needs: build-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+
+    - name: Configure Kubeconfig
+      uses: azure/k8s-set-context@v3
+      with:
+        method: kubeconfig
+        kubeconfig: ${{ secrets.KUBE_CONFIG }}
+
+    - name: Create Namespace & Secrets
+      run: |
+        # Ensure namespace exists
+        kubectl create namespace talos-guardian --dry-run=client -o yaml | kubectl apply -f -
+        
+        # Create/Update secrets securely
+        kubectl create secret generic talos-secrets \
+          --namespace talos-guardian \
+          --from-literal=OPENROUTER_API_KEY='${{ secrets.OPENROUTER_API_KEY }}' \
+          --from-literal=DB_PASSWORD='${{ secrets.DB_PASSWORD }}' \
+          --from-literal=REDIS_PASSWORD='${{ secrets.REDIS_PASSWORD }}' \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Deploy Manifests
+      run: |
+        # Substitute image tags with the specific SHA built in previous step
+        sed -i "s|image: talos/guardian:latest|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/guardian:${{ github.sha }}|g" deploy/k8s.yaml
+        sed -i "s|image: talos/worker:latest|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/worker:${{ github.sha }}|g" deploy/k8s.yaml
+        
+        # Apply the updated manifest
+        kubectl apply -f deploy/k8s.yaml
+
+    - name: Verify Rollout
+      run: |
+        kubectl rollout status deployment/talos-manager -n talos-guardian
+        kubectl rollout status deployment/talos-worker -n talos-guardian

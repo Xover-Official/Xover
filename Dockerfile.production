@@ -1,0 +1,65 @@
+# Multi-stage production Dockerfile for Talos Enterprise Cloud Optimization
+
+# Stage 1: Builder
+FROM golang:1.21-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata
+
+# Set working directory
+WORKDIR /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o talos ./cmd/atlas
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o talos-dashboard ./cmd/dashboard
+
+# Stage 2: Production runtime
+FROM alpine:latest
+
+# Install runtime dependencies
+RUN apk --no-cache add ca-certificates tzdata curl
+
+# Create non-root user
+RUN addgroup -g 1001 -S talos && \
+    adduser -u 1001 -S talos -G talos
+
+# Set working directory
+WORKDIR /app
+
+# Copy binaries from builder stage
+COPY --from=builder /app/talos .
+COPY --from=builder /app/talos-dashboard .
+
+# Copy configuration files
+COPY config.yaml .
+COPY docker-compose.enterprise.yml .
+
+# Create necessary directories
+RUN mkdir -p /app/data /app/logs /app/certs && \
+    chown -R talos:talos /app
+
+# Switch to non-root user
+USER talos
+
+# Expose ports
+EXPOSE 8080 8081 9090
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Set environment variables
+ENV GIN_MODE=release
+ENV TALOS_ENV=production
+
+# Default command
+CMD ["./talos"]

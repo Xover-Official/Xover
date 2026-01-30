@@ -1,0 +1,38 @@
+<!-- ROI Chart, Risk Heatmap, and Action Log additions for index.html -->
+<!-- Insert this section AFTER the resources-table div and BEFORE the closing </section> tag -->
+
+<!-- ROI Chart Section -->
+<div class="glass" style="margin-top: 2rem; padding: 2rem;">
+    <h3>💰 ROI Tracker</h3>
+    <canvas id="roiChart" style="max-height: 300px;"></canvas>
+</div>
+
+<!-- Risk Heatmap Section -->
+<div class="glass" style="margin-top: 2rem; padding: 2rem;">
+    <h3>🔥 Risk Heatmap</h3>
+    <div id="riskHeatmap" class="heatmap-grid"></div>
+</div>
+
+<!-- Action Log Section -->
+<div class="glass" style="margin-top: 2rem; padding: 2rem;">
+    <h3>📋 Action Log</h3>
+    <div style="overflow-x: auto;">
+        <table id="actionLog" class="action-log-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Resource</th>
+                    <th>Action</th>
+                    <th>Risk</th>
+                    <th>Savings</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="actionLogBody">
+                <tr>
+                    <td colspan="6" style="text-align: center; opacity: 0.5;">Waiting for actions...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

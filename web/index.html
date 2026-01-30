@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Talos | Autonomous Cloud Guardian</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script>
+        if (!document.cookie.includes('atlas_token')) {
+            window.location.href = '/login';
+        }
+    </script>
+</head>
+<body>
+    <div class="app-container">
+        <header class="glass-header">
+            <div class="logo">
+                <span class="icon">🛡️</span>
+                <h1>Talos <span class="badge">ENTERPRISE</span></h1>
+            </div>
+            <div class="status-indicator">
+                <span class="dot pulse-green"></span>
+                System Operational
+            </div>
+        </header>
+
+        <main class="dashboard-grid">
+            <!-- ROI Card -->
+            <div class="card glass-panel roi-card">
+                <h3>Monthly Savings</h3>
+                <div class="big-number">$<span id="savings-amount">0.00</span></div>
+                <div class="trend positive">▲ 47% vs last month</div>
+            </div>
+
+            <!-- Active Action -->
+            <div class="card glass-panel action-card">
+                <h3>Current Operation</h3>
+                <div class="action-text" id="current-action">Initializing OODA Loop...</div>
+                <div class="progress-bar">
+                    <div class="fill" id="action-progress"></div>
+                </div>
+            </div>
+
+            <!-- AI Swarm Status -->
+            <div class="card glass-panel swarm-card">
+                <h3>AI Swarm Intelligence</h3>
+                <div class="swarm-grid" id="swarm-grid">
+                    <!-- Tiers injected by JS -->
+                </div>
+            </div>
+
+            <!-- Queue Metrics -->
+            <div class="card glass-panel metrics-card">
+                <h3>Queue Depth</h3>
+                <div class="metric-row">
+                    <span>Pending Tasks</span>
+                    <span class="value" id="queue-depth">0</span>
+                </div>
+                <div class="metric-row">
+                    <span>Active Workers</span>
+                    <span class="value">5</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

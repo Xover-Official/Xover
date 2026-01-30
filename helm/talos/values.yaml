@@ -1,0 +1,102 @@
+# Default values for Talos Helm chart
+
+replicaCount: 3
+
+image:
+  repository: talos/guardian
+  pullPolicy: IfNotPresent
+  tag: "1.0.0"
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: talos.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: talos-tls
+      hosts:
+        - talos.yourdomain.com
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+postgresql:
+  enabled: true
+  auth:
+    username: talos_user
+    password: changeme
+    database: talos
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 1Gi
+
+vault:
+  enabled: false
+  server:
+    dev:
+      enabled: true
+
+prometheus:
+  enabled: true
+  server:
+    persistentVolume:
+      enabled: true
+      size: 10Gi
+
+grafana:
+  enabled: true
+  adminPassword: admin
+  persistence:
+    enabled: true
+    size: 1Gi
+
+config:
+  guardian:
+    mode: "swarm"
+    riskThreshold: 5.0
+    indieForce: true
+    dryRun: false
+  
+  ai:
+    openrouterKey: ""  # Set via secrets
+    devinKey: ""
+    gpt5Key: ""
+
+secrets:
+  create: true
+  # Set these values or use existing secret
+  databaseUrl: ""
+  openrouterKey: ""
+  devinKey: ""
+  gpt5Key: ""

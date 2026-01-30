@@ -1,0 +1,187 @@
+{
+  "name": "talos-guardian",
+  "displayName": "Talos Guardian - AI Cloud Optimizer",
+  "description": "Autonomous AI-powered cloud optimization and DevOps automation directly in VS Code",
+  "version": "0.9.0",
+  "publisher": "talos-dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/project-atlas/talos-guardian"
+  },
+  "icon": "resources/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Machine Learning",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "ai",
+    "cloud",
+    "devops",
+    "optimization",
+    "automation",
+    "infrastructure"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "talos.showDashboard",
+        "title": "Talos: Show Dashboard",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "talos.connectBackend",
+        "title": "Talos: Connect to Backend",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "talos.runOptimization",
+        "title": "Talos: Run Optimization",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "talos.showAIConsole",
+        "title": "Talos: AI Console",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "talos.viewROI",
+        "title": "Talos: View ROI Dashboard",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "talos.toggleAutonomous",
+        "title": "Talos: Toggle Autonomous Mode",
+        "icon": "$(robot)"
+      },
+      {
+        "command": "talos.viewHistory",
+        "title": "Talos: View Action History",
+        "icon": "$(history)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "talos-explorer",
+          "title": "Talos Guardian",
+          "icon": "resources/sidebar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "talos-explorer": [
+        {
+          "id": "talos.swarmStatus",
+          "name": "AI Swarm Status"
+        },
+        {
+          "id": "talos.resources",
+          "name": "Cloud Resources"
+        },
+        {
+          "id": "talos.recommendations",
+          "name": "Recommendations"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Talos Guardian",
+      "properties": {
+        "talos.backend.url": {
+          "type": "string",
+          "default": "http://localhost:8080",
+          "description": "Talos backend URL"
+        },
+        "talos.backend.mode": {
+          "type": "string",
+          "enum": [
+            "local",
+            "remote"
+          ],
+          "default": "local",
+          "description": "Backend connection mode"
+        },
+        "talos.autonomous.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable autonomous mode (AI can make changes)"
+        },
+        "talos.autonomous.requireApproval": {
+          "type": "boolean",
+          "default": true,
+          "description": "Require approval before AI actions"
+        },
+        "talos.ui.theme": {
+          "type": "string",
+          "enum": [
+            "glassmorphic",
+            "dark",
+            "light"
+          ],
+          "default": "glassmorphic",
+          "description": "Dashboard theme"
+        },
+        "talos.notifications.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show notifications for optimizations"
+        }
+      }
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "talos.showDashboard"
+        },
+        {
+          "command": "talos.connectBackend"
+        },
+        {
+          "command": "talos.runOptimization"
+        },
+        {
+          "command": "talos.showAIConsole"
+        },
+        {
+          "command": "talos.viewROI"
+        },
+        {
+          "command": "talos.toggleAutonomous"
+        },
+        {
+          "command": "talos.viewHistory"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "ts-loader": "^9.4.0",
+    "typescript": "^5.2.0",
+    "webpack": "^5.88.0",
+    "webpack-cli": "^5.1.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "ws": "^8.14.0"
+  }
+}

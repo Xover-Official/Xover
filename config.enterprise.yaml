@@ -1,0 +1,44 @@
+# Talos Enterprise Configuration
+guardian:
+  mode: "enterprise"
+  risk_threshold: 5.0
+  indie_force: false
+  dry_run: false  # Production mode
+
+ai:
+  openrouter_key: "${OPENROUTER_API_KEY}"
+  devin_key: "${DEVIN_API_KEY}"
+  openai_key: "${OPENAI_API_KEY}"
+
+storage:
+  ledger_path: "./data/atlas_ledger.db"
+  memory_path: "./data/memory.json"
+  log_path: "./data/SESSION_LOG.json"
+  data_path: "./data"
+
+network:
+  dashboard_port: "8080"
+  enable_sse: true
+
+database:
+  type: "postgres"
+  host: "postgres"
+  port: 5432
+  database: "talos_ledger"
+  user: "talos"
+  password: "${POSTGRES_PASSWORD}"
+  ssl_mode: "disable"
+
+redis:
+  addr: "redis:6379"
+  password: "${REDIS_PASSWORD}"
+  db: 0
+
+worker:
+  concurrency: 10
+  timeout: 300
+
+cache:
+  enabled: true
+  redis_addr: "redis:6379"
+  redis_password: "${REDIS_PASSWORD}"
