@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/project-atlas/atlas/internal/cloud"
 	"github.com/project-atlas/atlas/internal/risk"
@@ -30,7 +31,12 @@ func main() {
 		projectedImpact := res.CostPerMonth * 0.30
 
 		// Analyze risk
-		result := riskEngine.CalculateScore(projectedImpact, res.CPUUsage, res.MemoryUsage)
+		metrics := risk.CloudMetrics{
+			CPUUsage:    res.CPUUsage,
+			MemoryUsage: res.MemoryUsage,
+			MeasuredAt:  time.Now(),
+		}
+		result := riskEngine.CalculateScore(projectedImpact, metrics)
 
 		fmt.Printf("--- Recommendation ---\n")
 		fmt.Printf("Status: ")

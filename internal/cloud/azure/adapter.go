@@ -1,6 +1,7 @@
 package azure
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -32,25 +33,29 @@ func NewAzureAdapter(subscriptionID string) (*AzureAdapter, error) {
 	}, nil
 }
 
-// FetchResources retrieves all Azure resources
-func (a *AzureAdapter) FetchResources() ([]cloud.ResourceJSON, error) {
-	var resources []cloud.ResourceJSON
-
-	// Fetch VMs
+// FetchResources returns VM resources
+func (a *AzureAdapter) FetchResources(ctx context.Context) ([]cloud.ResourceJSON, error) {
 	vmResources, err := a.fetchVMs()
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch VMs: %w", err)
 	}
-	resources = append(resources, vmResources...)
-
-	return resources, nil
+	return vmResources, nil
 }
 
-func (a *AzureAdapter) fetchVMs() ([]cloud.ResourceJSON, error) {
-	// This is a simplified version - would need resource group iteration
-	var resources []cloud.ResourceJSON
+// GetSpotPrice satisfies the CloudAdapter interface
+func (a *AzureAdapter) GetSpotPrice(ctx context.Context, region, instanceType string) (float64, error) {
+	// Placeholder: implement actual Azure pricing API integration
+	return 0.45, nil
+}
 
-	// Placeholder for actual implementation
+// ListZones satisfies the CloudAdapter interface
+func (a *AzureAdapter) ListZones(ctx context.Context, region string) ([]string, error) {
+	// Placeholder: implement actual Azure zones listing
+	return []string{"1", "2", "3"}, nil
+}
+
+// fetchVMs retrieves VM resources
+func (a *AzureAdapter) fetchVMs() ([]cloud.ResourceJSON, error) {
 	resource := cloud.ResourceJSON{
 		ID:          "vm-placeholder",
 		Type:        "azure-vm",
@@ -63,12 +68,10 @@ func (a *AzureAdapter) fetchVMs() ([]cloud.ResourceJSON, error) {
 		},
 		MonthlyCost: 150.0,
 	}
-
-	resources = append(resources, resource)
-	return resources, nil
+	return []cloud.ResourceJSON{resource}, nil
 }
 
-// ApplyOptimization applies an optimization to an Azure resource
-func (a *AzureAdapter) ApplyOptimization(resourceID, action string) (string, error) {
+// ApplyOptimization updated to match interface signature
+func (a *AzureAdapter) ApplyOptimization(ctx context.Context, resourceID, action string) (string, error) {
 	return fmt.Sprintf("Applied %s to Azure resource %s", action, resourceID), nil
 }

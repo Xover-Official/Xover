@@ -53,7 +53,12 @@ func (w *Worker) RunCycle() error {
 
 		// Vector A: Standard Rightsizing
 		projectedImpact := res.CostPerMonth * 0.25
-		analysis := w.RiskEngine.CalculateScore(projectedImpact, res.CPUUsage)
+		metrics := risk.CloudMetrics{
+			CPUUsage:    res.CPUUsage,
+			MemoryUsage: res.MemoryUsage,
+			MeasuredAt:  time.Now(),
+		}
+		analysis := w.RiskEngine.CalculateScore(projectedImpact, metrics)
 
 		// Vector B: Spot Arbitrage
 		arbPlan, _ := w.ArbEngine.FindArbitrageOpportunity("us-east-1a", res.Type)

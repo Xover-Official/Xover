@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
-	cwtypes "github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	cloudwatchtypes "github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
@@ -247,11 +247,11 @@ func (a *Adapter) getEC2Metrics(ctx context.Context, instanceID string) (map[str
 		cpuResult, cpuErr = a.cwClient.GetMetricStatistics(ctx, &cloudwatch.GetMetricStatisticsInput{
 			Namespace:  aws.String("AWS/EC2"),
 			MetricName: aws.String("CPUUtilization"),
-			Dimensions: []cwtypes.Dimension{{Name: aws.String("InstanceId"), Value: aws.String(instanceID)}},
+			Dimensions: []cloudwatchtypes.Dimension{{Name: aws.String("InstanceId"), Value: aws.String(instanceID)}},
 			StartTime:  aws.Time(time.Now().Add(-1 * time.Hour)),
 			EndTime:    aws.Time(time.Now()),
 			Period:     aws.Int32(300), // 5 minutes
-			Statistics: []cwtypes.Statistic{cwtypes.StatisticAverage},
+			Statistics: []cloudwatchtypes.Statistic{cloudwatchtypes.StatisticAverage},
 		})
 	}()
 
@@ -260,11 +260,11 @@ func (a *Adapter) getEC2Metrics(ctx context.Context, instanceID string) (map[str
 		netInResult, netInErr = a.cwClient.GetMetricStatistics(ctx, &cloudwatch.GetMetricStatisticsInput{
 			Namespace:  aws.String("AWS/EC2"),
 			MetricName: aws.String("NetworkIn"),
-			Dimensions: []cwtypes.Dimension{{Name: aws.String("InstanceId"), Value: aws.String(instanceID)}},
+			Dimensions: []cloudwatchtypes.Dimension{{Name: aws.String("InstanceId"), Value: aws.String(instanceID)}},
 			StartTime:  aws.Time(time.Now().Add(-1 * time.Hour)),
 			EndTime:    aws.Time(time.Now()),
 			Period:     aws.Int32(3600), // 1 hour
-			Statistics: []cwtypes.Statistic{cwtypes.StatisticSum},
+			Statistics: []cloudwatchtypes.Statistic{cloudwatchtypes.StatisticSum},
 		})
 	}()
 
@@ -273,11 +273,11 @@ func (a *Adapter) getEC2Metrics(ctx context.Context, instanceID string) (map[str
 		netOutResult, netOutErr = a.cwClient.GetMetricStatistics(ctx, &cloudwatch.GetMetricStatisticsInput{
 			Namespace:  aws.String("AWS/EC2"),
 			MetricName: aws.String("NetworkOut"),
-			Dimensions: []cwtypes.Dimension{{Name: aws.String("InstanceId"), Value: aws.String(instanceID)}},
+			Dimensions: []cloudwatchtypes.Dimension{{Name: aws.String("InstanceId"), Value: aws.String(instanceID)}},
 			StartTime:  aws.Time(time.Now().Add(-1 * time.Hour)),
 			EndTime:    aws.Time(time.Now()),
 			Period:     aws.Int32(3600), // 1 hour
-			Statistics: []cwtypes.Statistic{cwtypes.StatisticSum},
+			Statistics: []cloudwatchtypes.Statistic{cloudwatchtypes.StatisticSum},
 		})
 	}()
 

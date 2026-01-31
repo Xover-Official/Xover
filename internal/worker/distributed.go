@@ -20,13 +20,13 @@ import (
 
 // Task represents a distributed work item
 type Task struct {
-	ID        string                 `json:"id"`
-	Type      string                 `json:"type"` // "scan", "analyze", "optimize"
-	Priority  int                    `json:"priority"`
-	Payload   map[string]interface{} `json:"payload"`
-	CreatedAt time.Time              `json:"created_at"`
-	Attempts  int                    `json:"attempts"`
-	MaxAttempts int                   `json:"max_attempts"`
+	ID          string                 `json:"id"`
+	Type        string                 `json:"type"` // "scan", "analyze", "optimize"
+	Priority    int                    `json:"priority"`
+	Payload     map[string]interface{} `json:"payload"`
+	CreatedAt   time.Time              `json:"created_at"`
+	Attempts    int                    `json:"attempts"`
+	MaxAttempts int                    `json:"max_attempts"`
 }
 
 // DistributedWorker represents a scalable worker node
@@ -37,14 +37,14 @@ type DistributedWorker struct {
 	orchestrator *ai.UnifiedOrchestrator
 	tokenTracker *analytics.TokenTracker
 	config       *config.Config
-	
+
 	// Worker state
 	isRunning    bool
 	taskQueue    chan Task
 	errorQueue   chan error
 	shutdownChan chan struct{}
 	wg           sync.WaitGroup
-	
+
 	// Metrics
 	tasksProcessed int64
 	tasksFailed    int64
@@ -63,7 +63,7 @@ func NewDistributedWorker(workerID string, cfg *config.Config, db persistence.Le
 	// Test Redis connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	if err := rdb.Ping(ctx).Err(); err != nil {
 		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
 	}
@@ -94,7 +94,8 @@ func (w *DistributedWorker) Start(ctx context.Context) error {
 	go w.heartbeatLoop(ctx)
 
 	// Start task processor goroutines
-	for i := 0; i < w.config.Worker.Concurrency; i++ {
+	concurrency := 10 // Default concurrency
+	for i := 0; i < concurrency; i++ {
 		w.wg.Add(1)
 		go w.taskProcessor(ctx, i)
 	}
@@ -177,17 +178,17 @@ func (w *DistributedWorker) heartbeatLoop(ctx context.Context) {
 // sendHeartbeat updates worker status in Redis
 func (w *DistributedWorker) sendHeartbeat(ctx context.Context) {
 	heartbeat := map[string]interface{}{
-		"id":             w.id,
-		"status":         "active",
-		"last_seen":      time.Now().Unix(),
+		"id":              w.id,
+		"status":          "active",
+		"last_seen":       time.Now().Unix(),
 		"tasks_processed": w.tasksProcessed,
 		"tasks_failed":    w.tasksFailed,
-		"version":        "2.0.0",
+		"version":         "2.0.0",
 	}
 
 	data, _ := json.Marshal(heartbeat)
 	key := fmt.Sprintf("workers:%s", w.id)
-	
+
 	w.redis.Set(ctx, key, data, 30*time.Second)
 	w.redis.SAdd(ctx, "workers:active", w.id)
 }
@@ -234,7 +235,7 @@ func (w *DistributedWorker) fetchTask(ctx context.Context) (*Task, error) {
 		// Try normal priority queue
 		result, err = w.redis.BRPop(ctx, 1*time.Second, "tasks:normal").Result()
 	}
-	
+
 	if err == redis.Nil {
 		return nil, nil // No tasks available
 	}
@@ -277,7 +278,7 @@ func (w *DistributedWorker) processTask(ctx context.Context, task Task) {
 	log.Printf("📋 Processing task %s (type: %s, worker: %s)", task.ID, task.Type, w.id)
 
 	start := time.Now()
-	
+
 	// Update task status to processing
 	w.updateTaskStatus(ctx, task.ID, "processing")
 
@@ -299,7 +300,7 @@ func (w *DistributedWorker) processTask(ctx context.Context, task Task) {
 		w.tasksFailed++
 		w.errorQueue <- fmt.Errorf("task %s failed: %w", task.ID, err)
 		w.updateTaskStatus(ctx, task.ID, "failed")
-		
+
 		// Retry logic
 		if task.Attempts < task.MaxAttempts {
 			task.Attempts++
@@ -354,7 +355,7 @@ func (w *DistributedWorker) handleAnalyzeTask(ctx context.Context, task Task) er
 	}
 
 	// Call AI orchestrator
-	response, err := w.orchestrator.Analyze(ctx, prompt, riskScore, "resource", 0.0)
+	response, err := w.orchestrator.Analyze(ctx, prompt, riskScore, nil)
 	if err != nil {
 		return fmt.Errorf("AI analysis failed: %w", err)
 	}
@@ -390,12 +391,12 @@ func (w *DistributedWorker) updateTaskStatus(ctx context.Context, taskID, status
 // retryTask requeues a failed task for retry
 func (w *DistributedWorker) retryTask(ctx context.Context, task Task) {
 	taskData, _ := json.Marshal(task)
-	
+
 	queue := "tasks:normal"
 	if task.Priority > 5 {
 		queue = "tasks:high_priority"
 	}
-	
+
 	w.redis.LPush(ctx, queue, taskData)
 	log.Printf("🔄 Retrying task %s (attempt %d/%d)", task.ID, task.Attempts, task.MaxAttempts)
 }

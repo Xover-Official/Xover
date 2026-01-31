@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/project-atlas/atlas/internal/cloud"
 )
 
 // Additional handlers that aren't in main.go
@@ -55,7 +53,7 @@ func (s *server) handleResourceMetrics(w http.ResponseWriter, r *http.Request) {
 		totalCost += res.CostPerMonth
 		cpuUsage += res.CPUUsage
 		memoryUsage += res.MemoryUsage
-		
+
 		if res.CPUUsage < 30 && res.MemoryUsage < 40 {
 			underutilizedCount++
 		}
@@ -66,15 +64,15 @@ func (s *server) handleResourceMetrics(w http.ResponseWriter, r *http.Request) {
 	underutilizedPercent := float64(underutilizedCount) / float64(totalResources) * 100
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":                     "success",
-		"total_resources":            totalResources,
-		"total_monthly_cost":         totalCost,
-		"average_cpu_usage":          avgCPU,
-		"average_memory_usage":       avgMemory,
-		"underutilized_count":        underutilizedCount,
-		"underutilized_percentage":    underutilizedPercent,
-		"potential_monthly_savings":   totalCost * (underutilizedPercent / 100),
-		"timestamp":                  time.Now(),
+		"status":                    "success",
+		"total_resources":           totalResources,
+		"total_monthly_cost":        totalCost,
+		"average_cpu_usage":         avgCPU,
+		"average_memory_usage":      avgMemory,
+		"underutilized_count":       underutilizedCount,
+		"underutilized_percentage":  underutilizedPercent,
+		"potential_monthly_savings": totalCost * (underutilizedPercent / 100),
+		"timestamp":                 time.Now(),
 	})
 }
 
@@ -134,27 +132,27 @@ func (s *server) handleOptimizationSuggestions(w http.ResponseWriter, r *http.Re
 
 		if suggestion != "" {
 			suggestions = append(suggestions, map[string]interface{}{
-				"resource_id":        res.ID,
-				"resource_type":      res.Type,
-				"provider":           res.Provider,
-				"region":             res.Region,
-				"current_cost":       res.CostPerMonth,
-				"cpu_usage":          res.CPUUsage,
-				"memory_usage":       res.MemoryUsage,
-				"suggestion":         suggestion,
-				"estimated_savings":  estimatedSavings,
-				"priority":           priority,
-				"reason":             generateOptimizationReason(res.CPUUsage, res.MemoryUsage, res.State),
+				"resource_id":       res.ID,
+				"resource_type":     res.Type,
+				"provider":          res.Provider,
+				"region":            res.Region,
+				"current_cost":      res.CostPerMonth,
+				"cpu_usage":         res.CPUUsage,
+				"memory_usage":      res.MemoryUsage,
+				"suggestion":        suggestion,
+				"estimated_savings": estimatedSavings,
+				"priority":          priority,
+				"reason":            generateOptimizationReason(res.CPUUsage, res.MemoryUsage, res.State),
 			})
 		}
 	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":                "success",
-		"suggestions":          suggestions,
-		"total_suggestions":     len(suggestions),
+		"status":                  "success",
+		"suggestions":             suggestions,
+		"total_suggestions":       len(suggestions),
 		"total_potential_savings": calculateTotalSavings(suggestions),
-		"timestamp":             time.Now(),
+		"timestamp":               time.Now(),
 	})
 }
 

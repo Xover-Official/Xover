@@ -51,7 +51,7 @@ type EnterpriseManager struct {
 func NewEnterpriseManager(cfg *config.Config, db persistence.Ledger, orchestrator *ai.UnifiedOrchestrator, tracker *analytics.TokenTracker) (*EnterpriseManager, error) {
 	// Connect to Redis
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     cfg.Redis.Addr,
+		Addr:     cfg.Redis.Address,
 		Password: cfg.Redis.Password,
 		DB:       cfg.Redis.DB,
 	})
