@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"sort"
@@ -15,36 +15,38 @@ import (
 	"github.com/project-atlas/atlas/internal/ai"
 	"github.com/project-atlas/atlas/internal/analytics"
 	"github.com/project-atlas/atlas/internal/config"
+	"github.com/project-atlas/atlas/internal/logger" // Updated
 	"github.com/project-atlas/atlas/internal/loop"
 	"github.com/project-atlas/atlas/internal/persistence"
+	"go.uber.org/zap"
 )
 
 func main() {
 	printBanner()
 
-	// 1. Setup structured logging
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	// 1. Setup enterprise structured logging
+	l := logger.GetLogger()
 
 	// 2. Load configuration from YAML and environment variables
 	cfg, err := config.Load("config.yaml")
 	if err != nil {
-		logger.Error("Failed to load config", "error", err)
+		l.Error("Failed to load config", zap.Error(err))
 		os.Exit(1)
 	}
 
 	// 3. Initialize persistence layer based on configuration
 	var ledger persistence.Ledger
 	if cfg.Server.Mode == "production" {
-		logger.Info("📊 Connecting to Production Ledger (PostgreSQL)...")
+		l.Info("📊 Connecting to Production Ledger (PostgreSQL)...")
 		ledger, err = persistence.NewPostgresLedger(cfg.Database.DSN)
 	} else {
-		logger.Info("📊 Using development Ledger (SQLite)...")
+		l.Info("📊 Using development Ledger (SQLite)...")
 		dataPath := "./data"
 		os.MkdirAll(dataPath, 0755)
 		ledger, err = persistence.NewSQLiteLedger(dataPath + "/talos.db")
 	}
 	if err != nil {
-		logger.Error("Persistence initialization failed", "error", err)
+		l.Error("Persistence initialization failed", zap.Error(err))
 		os.Exit(1)
 	}
 	defer ledger.Close()
@@ -63,25 +65,38 @@ func main() {
 		CacheAddr:    cfg.Redis.Address,
 	}
 
-	orchestrator, err := ai.NewUnifiedOrchestrator(aiCfg, tokenTracker, logger)
+	orchestrator, err := ai.NewUnifiedOrchestrator(aiCfg, tokenTracker, l)
 	if err != nil {
-		logger.Error("AI orchestrator initialization failed", "error", err)
+		l.Error("AI orchestrator initialization failed", zap.Error(err))
 		os.Exit(1)
 	}
 	defer orchestrator.Close()
 
 	// 6. Health check logic for all registered AI tiers
-	logger.Info("🏥 Running AI health checks...")
+	l.Info("🏥 Running AI health checks...")
 	healthResults := runHealthChecks(orchestrator.GetFactory())
 	printStartupSummary(cfg, healthResults)
 
-	// 7. Initialize and start the main OODA loop in a separate goroutine
-	logger.Info("🔄 Starting OODA loop...")
-	oodaLoop := loop.NewOODALoop(cfg, ledger, orchestrator, tokenTracker)
+	// 7. Start Health Server for K8s/Docker Probes
+	go func() {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("ok"))
+		})
+		l.Info("🏥 Health server starting on :8080")
+		if err := http.ListenAndServe(":8080", mux); err != nil {
+			l.Error("Health server failed", zap.Error(err))
+		}
+	}()
+
+	// 8. Initialize and start the main OODA loop in a separate goroutine
+	l.Info("🔄 Starting OODA loop...")
+	oodaLoop := loop.NewOODALoop(cfg, ledger, orchestrator, tokenTracker, l)
 
 	go func() {
 		if err := oodaLoop.Start(); err != nil {
-			logger.Error("OODA loop failed", "error", err)
+			l.Error("OODA loop failed", zap.Error(err))
 			os.Exit(1)
 		}
 	}()
@@ -91,7 +106,7 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	<-sigChan
-	logger.Info("🛑 Shutting down gracefully...")
+	l.Info("🛑 Shutting down gracefully...")
 
 	oodaLoop.Stop()
 
@@ -105,7 +120,7 @@ func main() {
 	fmt.Printf("  Net Profit:      $%.2f\n", stats["net_profit_usd"])
 	fmt.Println(strings.Repeat("═", 60))
 
-	logger.Info("👋 Talos shutdown complete.")
+	l.Info("👋 Talos shutdown complete.")
 }
 
 // runHealthChecks performs parallel health checks on all available AI clients.

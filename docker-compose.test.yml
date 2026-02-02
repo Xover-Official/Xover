@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  observer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - database
+    environment:
+      - DB_HOST=database
+      - DB_USER=user
+      - DB_PASSWORD=password
+      - DB_NAME=talos
+
+  database:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=talos
+    volumes:
+      - talos-data:/var/lib/postgresql/data
+
+volumes:
+  talos-data:

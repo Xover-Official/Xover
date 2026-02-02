@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/project-atlas/atlas/internal/auth"
+	"go.uber.org/zap"
 )
 
 func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +49,7 @@ func (s *server) handleCallback(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	ssoUser, err := provider.Authenticate(r.Context(), code)
 	if err != nil {
-		s.logger.Error("sso authentication failed", "error", err)
+		s.logger.Error("sso authentication failed", zap.Error(err))
 		respondWithError(w, http.StatusInternalServerError, "sso authentication failed")
 		return
 	}
@@ -65,7 +66,7 @@ func (s *server) handleCallback(w http.ResponseWriter, r *http.Request) {
 
 	token, err := s.jwtManager.Generate(user)
 	if err != nil {
-		s.logger.Error("failed to generate jwt", "error", err)
+		s.logger.Error("failed to generate jwt", zap.Error(err))
 		respondWithError(w, http.StatusInternalServerError, "failed to generate token")
 		return
 	}

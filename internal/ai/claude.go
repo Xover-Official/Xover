@@ -31,7 +31,7 @@ func NewClaudeClient(apiKey string) *ClaudeClient {
 }
 
 // Analyze implements AIClient interface
-func (c *ClaudeClient) Analyze(request AIRequest) (*AIResponse, error) {
+func (c *ClaudeClient) Analyze(ctx context.Context, request AIRequest) (*AIResponse, error) {
 	startTime := time.Now()
 
 	reqBody := map[string]interface{}{
@@ -51,7 +51,7 @@ func (c *ClaudeClient) Analyze(request AIRequest) (*AIResponse, error) {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequest("POST", c.endpoint, bytes.NewBuffer(jsonData))
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -132,6 +132,6 @@ func (c *ClaudeClient) HealthCheck(ctx context.Context) error {
 		Temperature: 0.1,
 	}
 
-	_, err := c.Analyze(testReq)
+	_, err := c.Analyze(ctx, testReq)
 	return err
 }

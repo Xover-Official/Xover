@@ -1,70 +1,334 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Talos | Autonomous Cloud Guardian</title>
+    <title>Talos Atlas | Enterprise Cloud Guardian</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+        // Simple Auth Check
         if (!document.cookie.includes('atlas_token')) {
-            window.location.href = '/login';
+            window.location.href = '/login.html';
         }
     </script>
 </head>
+
 <body>
     <div class="app-container">
-        <header class="glass-header">
-            <div class="logo">
-                <span class="icon">🛡️</span>
-                <h1>Talos <span class="badge">ENTERPRISE</span></h1>
+        <!-- Premium Header -->
+        <header class="glass-header fade-in">
+            <div class="logo-container">
+                <div class="logo-icon">🛡️</div>
+                <div>
+                    <h1>Talos Atlas<span class="badge-premium">ENTERPRISE</span></h1>
+                </div>
             </div>
-            <div class="status-indicator">
-                <span class="dot pulse-green"></span>
-                System Operational
+            <div class="system-status">
+                <div class="pulse-dot"></div>
+                <span>Autonomous Mode: <strong style="color: var(--text-main)">ACTIVE</strong></span>
             </div>
         </header>
 
         <main class="dashboard-grid">
-            <!-- ROI Card -->
-            <div class="card glass-panel roi-card">
-                <h3>Monthly Savings</h3>
-                <div class="big-number">$<span id="savings-amount">0.00</span></div>
-                <div class="trend positive">▲ 47% vs last month</div>
-            </div>
-
-            <!-- Active Action -->
-            <div class="card glass-panel action-card">
-                <h3>Current Operation</h3>
-                <div class="action-text" id="current-action">Initializing OODA Loop...</div>
-                <div class="progress-bar">
-                    <div class="fill" id="action-progress"></div>
+            <!-- ROI Analysis Card with Chart -->
+            <div class="card roi-card fade-in" style="animation-delay: 0.1s; grid-column: span 6;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                    <div>
+                        <div class="card-title">Realized Savings</div>
+                        <div class="big-value">$<span id="savings-amount">1,247.50</span></div>
+                        <div class="savings-label">
+                            <span class="trend-up">↑ 47.2%</span>
+                            <span style="font-size: 0.8rem; color: var(--text-dim)">vs baseline</span>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div class="card-title">Projected Annual</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-primary)">
+                            $<span id="proj-savings">14,970</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="height: 200px; width: 100%;">
+                    <canvas id="optimizationChart"></canvas>
                 </div>
             </div>
 
-            <!-- AI Swarm Status -->
-            <div class="card glass-panel swarm-card">
-                <h3>AI Swarm Intelligence</h3>
+            <!-- Health & Status -->
+            <div class="card health-card fade-in" style="animation-delay: 0.2s; grid-column: span 3;">
+                <div class="card-title">Infrastructure Health</div>
+                <div class="circular-chart">
+                    <svg viewBox="0 0 36 36">
+                        <path class="circle-bg"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path class="circle" id="health-circle" stroke-dasharray="98, 100"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <text x="18" y="20.35" class="percentage"
+                            style="fill: #fff; font-size: 8px; text-anchor: middle; font-weight: 700;"
+                            id="system-health">98%</text>
+                    </svg>
+                </div>
+                <div style="font-size: 0.85rem; color: var(--text-dim); text-align: center;">
+                    System stability is <strong style="color: var(--accent-success)">OPTIMAL</strong>
+                </div>
+            </div>
+
+            <!-- Main Operation Loop -->
+            <div class="card operation-card fade-in"
+                style="animation-delay: 0.3s; grid-column: span 3; background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%);">
+                <div class="card-title">OODA Loop Status</div>
+                <div class="op-status" id="current-action" style="font-size: 1.1rem; min-height: 3rem;">Synchronizing
+                    Swarm...</div>
+
+                <div class="ooda-steps" style="display: flex; gap: 0.5rem; margin: 1rem 0;">
+                    <div id="step-observe" class="ooda-step active">OBS</div>
+                    <div id="step-orient" class="ooda-step">ORI</div>
+                    <div id="step-decide" class="ooda-step">DEC</div>
+                    <div id="step-act" class="ooda-step">ACT</div>
+                </div>
+
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>Cycle Progress</span>
+                        <span id="progress-val">45%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="action-progress" style="width: 45%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Swarm status -->
+            <div class="card swarm-card fade-in" style="animation-delay: 0.4s; grid-column: span 8;">
+                <div class="card-title">Collective Swarm Intelligence</div>
                 <div class="swarm-grid" id="swarm-grid">
-                    <!-- Tiers injected by JS -->
+                    <!-- Dynamic Agent Nodes via app.js -->
                 </div>
             </div>
 
-            <!-- Queue Metrics -->
-            <div class="card glass-panel metrics-card">
-                <h3>Queue Depth</h3>
-                <div class="metric-row">
-                    <span>Pending Tasks</span>
-                    <span class="value" id="queue-depth">0</span>
+            <!-- Activity Feed -->
+            <div class="card queue-card fade-in"
+                style="animation-delay: 0.5s; grid-column: span 4; max-height: 400px; overflow: hidden;">
+                <div class="card-title">Live Neural Feed</div>
+                <div id="activity-feed" class="activity-feed-container"
+                    style="overflow-y: auto; height: 300px; padding-right: 5px;">
+                    <!-- Populated by main.js -->
                 </div>
-                <div class="metric-row">
-                    <span>Active Workers</span>
-                    <span class="value">5</span>
+            </div>
+
+            <!-- Resources Table -->
+            <div class="card fade-in" style="animation-delay: 0.6s; grid-column: span 12;">
+                <div class="card-title" style="display: flex; justify-content: space-between;">
+                    <span>Pending Optimization Approvals</span>
+                    <button class="view-logs-btn" style="width: auto; padding: 0.2rem 1rem;">Auto-Approve All (Risk &lt;
+                        5%)</button>
                 </div>
+                <table
+                    style="width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9rem; color: var(--text-dim);">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--glass-border); text-align: left;">
+                            <th style="padding: 1rem; color: var(--text-main);">Resource ID</th>
+                            <th style="padding: 1rem;">Current State</th>
+                            <th style="padding: 1rem;">Target State</th>
+                            <th style="padding: 1rem;">Proj. Savings</th>
+                            <th style="padding: 1rem;">Risk Level</th>
+                            <th style="padding: 1rem;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resources-body">
+                        <!-- Populated by main.js -->
+                    </tbody>
+                </table>
             </div>
         </main>
+
+        <div id="notification-container" style="position: fixed; bottom: 2rem; right: 2rem; z-index: 9999;"></div>
     </div>
 
+    <!-- Modal for Approval -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Confirm Optimization</h3>
+            <p><strong>Resource:</strong> <span id="modal-resource"></span></p>
+            <p><strong>Change:</strong> <span id="modal-change"></span></p>
+            <p><strong>Impact:</strong> <span id="modal-impact" class="positive"></span> savings</p>
+            <div class="modal-actions">
+                <button class="cta-button secondary close-modal">Cancel</button>
+                <button class="cta-button" id="confirm-approval">Execute</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Styles for new elements -->
+    <style>
+        .ooda-step {
+            flex: 1;
+            padding: 0.5rem;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-dim);
+            transition: all 0.3s;
+        }
+
+        .ooda-step.active {
+            background: var(--accent-primary);
+            color: #000;
+            box-shadow: 0 0 15px var(--glow-blue);
+        }
+
+        .activity-feed-container::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .activity-feed-container::-webkit-scrollbar-thumb {
+            background: var(--glass-border);
+            border-radius: 4px;
+        }
+
+        .feed-item {
+            display: flex;
+            gap: 1rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .feed-content p {
+            font-size: 0.85rem;
+            color: var(--text-main);
+            margin-bottom: 0.2rem;
+        }
+
+        .feed-time {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .badge-risk {
+            padding: 0.25rem 0.75rem;
+            border-radius: 99px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .badge-risk.low {
+            background: rgba(52, 211, 153, 0.15);
+            color: var(--accent-success);
+        }
+
+        .badge-risk.med {
+            background: rgba(251, 191, 36, 0.15);
+            color: var(--accent-warning);
+        }
+
+        .badge-risk.high {
+            background: rgba(248, 113, 113, 0.15);
+            color: var(--accent-error);
+        }
+
+        .btn-action {
+            background: transparent;
+            border: 1px solid var(--accent-primary);
+            color: var(--accent-primary);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-action:hover {
+            background: var(--accent-primary);
+            color: #0f172a;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-content {
+            background: #1e293b;
+            border: 1px solid var(--glass-border);
+            padding: 2rem;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            justify-content: flex-end;
+        }
+
+        /* Toast */
+        .toast {
+            background: #1e293b;
+            border: 1px solid var(--glass-border);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s;
+            min-width: 300px;
+        }
+
+        .toast.success i {
+            color: var(--accent-success);
+        }
+
+        .toast.info i {
+            color: var(--accent-primary);
+        }
+    </style>
+
+    <!-- JS for dynamic updates -->
     <script src="app.js"></script>
+    <script src="main.js"></script>
 </body>
+
 </html>

@@ -1,55 +1,399 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Atlas Dashboard</title>
+    <title>Talos Atlas | Enterprise Access</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet">
     <style>
+        :root {
+            --bg-dark: #0a0a0f;
+            --glass-panel: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text-main: #ffffff;
+            --text-dim: #8a8f98;
+            --accent-primary: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.5);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f0f2f5;
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
+            overflow: hidden;
+            color: var(--text-main);
         }
-        .login-container {
-            background-color: #fff;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-        h1 {
-            color: #1c1e21;
-            font-size: 24px;
-            margin-bottom: 30px;
-        }
-        .sso-button {
-            display: block;
+
+        #bg-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            color: #fff;
+            height: 100%;
+            z-index: 0;
+            background: radial-gradient(circle at 50% 50%, #1e293b 0%, #020617 100%);
         }
-        .google-btn { background-color: #4285F4; }
-        .okta-btn { background-color: #007dc1; }
-        .azure-btn { background-color: #0072c6; }
+
+        .login-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 440px;
+            padding: 2rem;
+            z-index: 10;
+        }
+
+        .login-card {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 3rem 2.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+            text-align: center;
+            animation: cardEntrance 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        @keyframes cardEntrance {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .logo-container-login {
+            margin-bottom: 1.5rem;
+            position: relative;
+            display: inline-block;
+        }
+
+        .logo {
+            font-size: 4rem;
+            filter: drop-shadow(0 0 30px rgba(59, 130, 246, 0.6));
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .logo-text {
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75rem;
+            letter-spacing: 0.3em;
+            font-weight: 800;
+            color: rgba(255, 255, 255, 0.6);
+            width: 100%;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            color: var(--text-dim);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            margin-bottom: 2.5rem;
+            line-height: 1.5;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .sso-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 500;
+            text-decoration: none;
+            color: white;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sso-button::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: 0.5s;
+        }
+
+        .sso-button:hover::after {
+            left: 100%;
+        }
+
+        .sso-button:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 10px 20px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .icon {
+            margin-right: 12px;
+            font-size: 1.2rem;
+        }
+
+        .google-btn {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .google-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .okta-btn {
+            background: linear-gradient(135deg, #007dc1 0%, #005a8b 100%);
+            border: none;
+        }
+
+        .azure-btn {
+            background: linear-gradient(135deg, #0078d4 0%, #005a9e 100%);
+            border: none;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 1.5rem 0;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, transparent, var(--glass-border), transparent);
+        }
+
+        .divider span {
+            padding: 0 15px;
+        }
+
+        .compliance-badge {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(59, 130, 246, 0.08);
+            color: #60a5fa;
+            padding: 6px 16px;
+            border-radius: 99px;
+            font-size: 0.75rem;
+            font-family: 'Inter', sans-serif;
+            margin-top: 2rem;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            transition: all 0.3s;
+        }
+
+        .compliance-badge:hover {
+            background: rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .lock-icon {
+            margin-right: 6px;
+        }
     </style>
 </head>
+
 <body>
-    <div class="login-container">
-        <h1>Login to Atlas</h1>
-        <a href="/auth/login/google" class="sso-button google-btn">Login with Google</a>
-        <a href="/auth/login/okta" class="sso-button okta-btn">Login with Okta</a>
-        <a href="/auth/login/azure" class="sso-button azure-btn">Login with Azure AD</a>
+    <canvas id="bg-canvas"></canvas>
+
+    <div class="login-wrapper">
+        <div class="login-card">
+            <div class="logo-container-login">
+                <div class="logo">🛡️</div>
+                <div class="logo-text">TALOS</div>
+            </div>
+            <h1>Enterprise Cloud Guardian</h1>
+            <p>Secure Access Portal</p>
+
+            <div class="input-group">
+                <a href="#" class="sso-button okta-btn" onclick="handleDemoLogin('Okta')">
+                    <span class="icon">⭕</span> Continue with Okta
+                </a>
+
+                <a href="#" class="sso-button azure-btn" onclick="handleDemoLogin('Azure AD')">
+                    <span class="icon">💠</span> Continue with Azure AD
+                </a>
+            </div>
+
+            <div class="divider">
+                <span>OR</span>
+            </div>
+
+            <a href="#" class="sso-button google-btn" onclick="handleDemoLogin('Google')">
+                <span class="icon">G</span> Sign in with Google
+            </a>
+
+            <div style="margin-top: 1.5rem; border-top: 1px solid var(--glass-border); padding-top: 1.5rem;">
+                <button onclick="handleDemoLogin('DemoUser')"
+                    style="width: 100%; background: transparent; border: 1px dashed var(--text-dim); color: var(--text-dim); padding: 0.8rem; border-radius: 12px; cursor: pointer; transition: all 0.2s;">
+                    ✨ Launch Interactive Demo
+                </button>
+            </div>
+
+            <div class="compliance-badge">
+                <span class="lock-icon">🔒</span> SOC2 Type II Compliant Environment
+            </div>
+        </div>
     </div>
+
+    <script>
+        function handleDemoLogin(provider) {
+            // Simulate processing delay for realism
+            const btn = event.currentTarget;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Authenticating...';
+            btn.style.opacity = '0.7';
+
+            setTimeout(() => {
+                // Set the auth token cookie required by app.js
+                const date = new Date();
+                date.setTime(date.getTime() + (7 * 24 * 60 * 60 * 1000)); // 7 days
+                document.cookie = "atlas_token=demo_access_token_" + Math.random().toString(36).substring(7) + "; expires=" + date.toUTCString() + "; path=/";
+
+                // Store user info for personalization
+                localStorage.setItem('atlas_user_provider', provider);
+
+                // Redirect to dashboard
+                window.location.href = '/index.html';
+            }, 800);
+
+            return false; // Prevent default link behavior
+        }
+
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let particles = [];
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            // Re-init particles on resize to maintain density
+            init();
+        }
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.3; // Slower, calmer movement
+                this.vy = (Math.random() - 0.5) * 0.3;
+                this.size = Math.random() * 2 + 1;
+                this.color = `rgba(148, 163, 184, ${Math.random() * 0.3 + 0.1})`;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Bounce off edges
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function init() {
+            particles = [];
+            // Responsive number of particles
+            const count = Math.min(60, Math.floor(width * height / 15000));
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw connections
+            particles.forEach((p, index) => {
+                p.update();
+                p.draw();
+
+                for (let j = index + 1; j < particles.length; j++) {
+                    const p2 = particles[j];
+                    const dx = p.x - p2.x;
+                    const dy = p.y - p2.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 150) {
+                        ctx.strokeStyle = `rgba(148, 163, 184, ${0.08 * (1 - dist / 150)})`;
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                    }
+                }
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+        init();
+        animate();
+    </script>
 </body>
+
 </html>

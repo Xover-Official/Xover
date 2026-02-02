@@ -1,0 +1,47 @@
+openapi: 3.0.3
+info:
+  title: TALOS API
+  description: Enterprise autonomous cloud optimization engine.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api
+paths:
+  /roi:
+    get:
+      summary: Get system ROIs
+      responses:
+        '200':
+          description: Successful ROI report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  roi:
+                    type: object
+  /token-breakdown:
+    get:
+      summary: Get AI token usage statistics
+      responses:
+        '200':
+          description: Successful stats report
+  /system/status:
+    get:
+      summary: Check overall system health and sub-service status
+      responses:
+        '200':
+          description: Health details
+  /resources:
+    get:
+      summary: List all monitored resources and their states
+      responses:
+        '200':
+          description: List of cloud resources
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - bearerAuth: []

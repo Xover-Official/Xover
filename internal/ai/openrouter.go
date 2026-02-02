@@ -2,12 +2,14 @@ package ai
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
+	"github.com/project-atlas/atlas/internal/errors"
 	"github.com/project-atlas/atlas/internal/logger"
 )
 
@@ -23,6 +25,7 @@ type LegacyOpenRouterClient struct {
 	APIKey   string
 	DevinKey string
 	Memory   *ProjectMemory
+	client   *http.Client
 }
 
 type Message struct {
@@ -46,19 +49,20 @@ type ChatResponse struct {
 func NewLegacyOpenRouterClient(apiKey string, mem *ProjectMemory) *LegacyOpenRouterClient {
 	return &LegacyOpenRouterClient{
 		APIKey:   apiKey,
-		DevinKey: "apk_b3JnLWU2ZmQ2YjlkZDIzMjQwNWQ4MjZmYjFlZDdlODUzY2E3OmRkODQ2MzJlNTc1NzQ4MDQ4YmEyZWI3NmJhYzU3ZTVl",
+		DevinKey: "", // REMOVED: Should be passed via config or env var
 		Memory:   mem,
+		client:   &http.Client{Timeout: 60 * time.Second},
 	}
 }
 
-func (c *LegacyOpenRouterClient) AnalyzeTiered(context string, resourceID string, risk float64) (string, error) {
+func (c *LegacyOpenRouterClient) AnalyzeTiered(ctx context.Context, contextStr string, resourceID string, risk float64) (string, error) {
 	model := ModelGeminiFlash
 
 	// Tier 4: The Oracle (Devin) - Only for extreme complexity
 	if risk > 9.0 {
 		model = ModelDevinOracle
 		logger.LogAction(logger.Auditor, "AI-Selection", "ORACLE", "CRITICAL COMPLEXITY: Engaging Devin Oracle for multi-dimensional analysis.")
-		return c.AnalyzeWithDevin(context, resourceID)
+		return c.AnalyzeWithDevin(ctx, contextStr, resourceID)
 	} else if risk > 7.0 {
 		model = ModelClaude45
 		logger.LogAction(logger.Auditor, "AI-Selection", "UPGRADE", "Critical risk detected. Engaging Claude 4.5 for Safety Audit.")
@@ -69,11 +73,11 @@ func (c *LegacyOpenRouterClient) AnalyzeTiered(context string, resourceID string
 		logger.LogAction(logger.Architect, "AI-Selection", "NOMINAL", "Engaging Gemini Flash for pattern observation.")
 	}
 
-	return c.AnalyzeWithModel(context, resourceID, model)
+	return c.AnalyzeWithModel(ctx, contextStr, resourceID, model)
 }
 
 // ExplainDecision uses GPT-5 Mini to provide a "Why" summary for human operators
-func (c *LegacyOpenRouterClient) ExplainDecision(action string, context string) (string, error) {
+func (c *LegacyOpenRouterClient) ExplainDecision(ctx context.Context, action string, contextStr string) (string, error) {
 	// Use GPT-5 Mini for high-reasoning, low-latency explanation
 	model := ModelGPT5Mini
 
@@ -82,16 +86,15 @@ You are the Voice of Talos. Explain to a human operator WHY this action is neces
 Action: %s
 Context: %s
 Keep it under 2 sentences. Be reassuring but precise.
-`, action, context)
+`, action, contextStr)
 
-	return c.AnalyzeWithModel(prompt, "explain-request", model)
+	return c.AnalyzeWithModel(ctx, prompt, "explain-request", model)
 }
 
-func (c *LegacyOpenRouterClient) AnalyzeWithDevin(context string, resourceID string) (string, error) {
+func (c *LegacyOpenRouterClient) AnalyzeWithDevin(ctx context.Context, contextStr string, resourceID string) (string, error) {
 	// Devin AI uses a different API endpoint
 	url := "https://api.devin.ai/v1/analyze"
-
-	previousDecisions := c.Memory.GetDecisionsForResource(resourceID)
+	previousDecisions, _ := c.Memory.GetDecisionsForResource(ctx, resourceID)
 	memoryPrompt := ""
 	if len(previousDecisions) > 0 {
 		memoryPrompt = "\nHistorical context:\n"
@@ -101,25 +104,38 @@ func (c *LegacyOpenRouterClient) AnalyzeWithDevin(context string, resourceID str
 	}
 
 	payload := map[string]interface{}{
-		"task": fmt.Sprintf("Analyze infrastructure resource [%s].\nContext: %s\n%s\nProvide a comprehensive multi-dimensional analysis considering: cost optimization, performance impact, security implications, and long-term architectural consequences.", resourceID, context, memoryPrompt),
+		"task": fmt.Sprintf("Analyze infrastructure resource [%s].\nContext: %s\n%s\nProvide a comprehensive multi-dimensional analysis considering: cost optimization, performance impact, security implications, and long-term architectural consequences.", resourceID, contextStr, memoryPrompt),
 		"mode": "deep_reasoning",
 	}
 
-	jsonData, _ := json.Marshal(payload)
-	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return "", errors.NewInternalError("failed to marshal devin payload", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", errors.NewInternalError("failed to create devin request", err)
+	}
 	req.Header.Set("Authorization", "Bearer "+c.DevinKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	start := time.Now()
-	client := &http.Client{Timeout: 60 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		logger.LogAction(logger.Auditor, "DevinOracle", "FAILED", "Devin API unreachable. Falling back to Claude.")
-		return c.AnalyzeWithModel(context, resourceID, ModelClaude45)
+		return c.AnalyzeWithModel(ctx, contextStr, resourceID, ModelClaude45)
 	}
 	defer resp.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", errors.NewAIServiceError("devin-oracle", "DevinAI", fmt.Errorf("status: %d, body: %s", resp.StatusCode, string(body)))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.NewInternalError("failed to read response body", err)
+	}
 
 	var result struct {
 		Analysis string `json:"analysis"`
@@ -127,20 +143,20 @@ func (c *LegacyOpenRouterClient) AnalyzeWithDevin(context string, resourceID str
 
 	if err := json.Unmarshal(body, &result); err != nil {
 		logger.LogAction(logger.Auditor, "DevinOracle", "FAILED", "Devin response parsing failed. Falling back to Claude.")
-		return c.AnalyzeWithModel(context, resourceID, ModelClaude45)
+		return c.AnalyzeWithModel(ctx, contextStr, resourceID, ModelClaude45)
 	}
 
 	latency := time.Since(start)
-	logger.LogFullAction(logger.Auditor, "DevinOracle", "COMPLETED", fmt.Sprintf("Oracle consulted | Latency: %v", latency), latency, 5000)
+	logger.LogFullAction(logger.Auditor, "DevinOracle", "COMPLETED", fmt.Sprintf("Oracle consulted | Latency: %v", latency), latency.Milliseconds(), 5000)
 
 	return result.Analysis, nil
 }
 
-func (c *LegacyOpenRouterClient) AnalyzeWithModel(context string, resourceID string, model string) (string, error) {
+func (c *LegacyOpenRouterClient) AnalyzeWithModel(ctx context.Context, contextStr string, resourceID string, model string) (string, error) {
 	url := "https://openrouter.ai/api/v1/chat/completions"
 
 	// Inject Memory
-	previousDecisions := c.Memory.GetDecisionsForResource(resourceID)
+	previousDecisions, _ := c.Memory.GetDecisionsForResource(ctx, resourceID)
 	memoryPrompt := ""
 	if len(previousDecisions) > 0 {
 		memoryPrompt = "\nHistorical context for this resource:\n"
@@ -149,7 +165,7 @@ func (c *LegacyOpenRouterClient) AnalyzeWithModel(context string, resourceID str
 		}
 	}
 
-	prompt := fmt.Sprintf("Analyze resource [%s].\nCurrent State: %s\n%s\nProvide a strategic recommendation as the project owner. If you see a recurring pattern or if previous actions failed, suggest a more radical or conservative shift.", resourceID, context, memoryPrompt)
+	prompt := fmt.Sprintf("Analyze resource [%s].\nCurrent State: %s\n%s\nProvide a strategic recommendation as the project owner. If you see a recurring pattern or if previous actions failed, suggest a more radical or conservative shift.", resourceID, contextStr, memoryPrompt)
 
 	reqBody := ChatRequest{
 		Model: model,
@@ -165,7 +181,7 @@ func (c *LegacyOpenRouterClient) AnalyzeWithModel(context string, resourceID str
 
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", err
+		return "", errors.NewInternalError("failed to marshal request", err)
 	}
 
 	maxRetries := 3
@@ -173,50 +189,60 @@ func (c *LegacyOpenRouterClient) AnalyzeWithModel(context string, resourceID str
 
 	for i := 0; i < maxRetries; i++ {
 		start := time.Now()
-		req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+		req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 		if err != nil {
-			return "", err
+			return "", errors.NewInternalError("failed to create request", err)
 		}
 
 		req.Header.Set("Authorization", "Bearer "+c.APIKey)
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("HTTP-Referer", "https://github.com/talos-guardian")
 
-		client := &http.Client{}
-		resp, err := client.Do(req)
+		resp, err := c.client.Do(req)
 		if err != nil {
-			return "", err
+			if i < maxRetries-1 {
+				time.Sleep(backoff)
+				backoff *= 2
+				continue
+			}
+			return "", errors.NewAIServiceError(model, "OpenRouter", err)
 		}
 
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 
+		if err != nil {
+			return "", errors.NewInternalError("failed to read response body", err)
+		}
+
 		if resp.StatusCode == http.StatusTooManyRequests {
-			fmt.Printf("⚠️  RATE LIMIT: OpenRouter 429. Backing off for %v...\n", backoff)
-			time.Sleep(backoff)
-			backoff *= 2
-			continue
+			if i < maxRetries-1 {
+				time.Sleep(backoff)
+				backoff *= 2
+				continue
+			}
+			return "", errors.NewErrorBuilder(errors.ErrCloudRateLimit, "OpenRouter rate limit exceeded").Severity(errors.SeverityMedium).Build()
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			return "", fmt.Errorf("openrouter error: %s", string(body))
+			return "", errors.NewAIServiceError(model, "OpenRouter", fmt.Errorf("status: %d, body: %s", resp.StatusCode, string(body)))
 		}
 
 		var chatResp ChatResponse
 		if err := json.Unmarshal(body, &chatResp); err != nil {
-			return "", err
+			return "", errors.NewInternalError("failed to unmarshal response", err)
 		}
 
 		if len(chatResp.Choices) > 0 {
 			latency := time.Since(start)
-			logger.LogFullAction(logger.Architect, "AIRunning", "COMPLETED", fmt.Sprintf("Model: %s | Latency: %v", model, latency), latency, 500)
+			logger.LogFullAction(logger.Architect, "AIRunning", "COMPLETED", fmt.Sprintf("Model: %s | Latency: %v", model, latency), latency.Milliseconds(), 500)
 			return chatResp.Choices[0].Message.Content, nil
 		}
 	}
 
-	return "", fmt.Errorf("max retries reached for AI analysis")
+	return "", errors.NewAIServiceError(model, "OpenRouter", fmt.Errorf("max retries reached"))
 }
 
-func (c *LegacyOpenRouterClient) AnalyzeOpportunity(context string, resourceID string) (string, error) {
-	return c.AnalyzeTiered(context, resourceID, 0.0) // Legacy support defaults to Flash
+func (c *LegacyOpenRouterClient) AnalyzeOpportunity(ctx context.Context, contextStr string, resourceID string) (string, error) {
+	return c.AnalyzeTiered(ctx, contextStr, resourceID, 0.0) // Legacy support defaults to Flash
 }

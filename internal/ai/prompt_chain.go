@@ -63,7 +63,7 @@ func (p *PromptChain) Execute(ctx context.Context, orchestrator *UnifiedOrchestr
 		var response *AIResponse
 		var err error
 
-		response, err = model.Analyze(request)
+		response, err = model.Analyze(ctx, request)
 
 		if err != nil {
 			if step.Required {

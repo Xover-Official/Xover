@@ -98,7 +98,7 @@ func (w *Worker) RunCycle() error {
 		if arbPlan != nil && arbPlan.RiskScore < 5.0 {
 			logger.LogAction(logger.Auditor, "Decision", "MATCH", "Arbitrage opportunity found")
 			w.IdempEngine.ExecuteGuarded(logger.Builder, "MigrateZone", res, func() (string, error) {
-				_, _, err := w.Provider.ApplyOptimization(context.Background(), res, "spot-migrate")
+				_, err := w.Provider.ApplyOptimization(context.Background(), res, "spot-migrate")
 				return "spot-migration completed", err
 			})
 		}
@@ -106,7 +106,7 @@ func (w *Worker) RunCycle() error {
 		// Priority 2: Scheduling (if peak/off-peak matches)
 		if schedPlan != nil {
 			w.IdempEngine.ExecuteGuarded(logger.Builder, "ScheduleStop", res, func() (string, error) {
-				_, _, err := w.Provider.ApplyOptimization(context.Background(), res, "stopped")
+				_, err := w.Provider.ApplyOptimization(context.Background(), res, "stopped")
 				return "schedule-stop completed", err
 			})
 		}
@@ -114,7 +114,7 @@ func (w *Worker) RunCycle() error {
 		// Priority 3: Rightsizing
 		if analysis.Score > 5.0 && res.CPUUsage < 40 && res.MemoryUsage < 50 {
 			w.IdempEngine.ExecuteGuarded(logger.Builder, "Rightsize", res, func() (string, error) {
-				_, _, err := w.Provider.ApplyOptimization(context.Background(), res, "resize")
+				_, err := w.Provider.ApplyOptimization(context.Background(), res, "resize")
 				return "rightsize completed", err
 			})
 		}

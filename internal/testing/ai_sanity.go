@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/project-atlas/atlas/internal/ai"
+	"github.com/project-atlas/atlas/internal/cloud"
 )
 
 // AITestCase represents a test case for AI behavior
@@ -42,12 +43,22 @@ func (s *AITestSuite) RunTest(testCase AITestCase) bool {
 
 		start := time.Now()
 
+		// Create a mock resource for testing
+		mockResource := &cloud.ResourceV2{
+			ID:           "test-instance",
+			Type:         testCase.Prompt, // Use prompt as type for testing
+			Provider:     "aws",
+			Region:       "us-east-1",
+			CPUUsage:     10.0,
+			MemoryUsage:  20.0,
+			CostPerMonth: 50.0,
+		}
+
 		response, err := s.orchestrator.Analyze(
 			ctx,
 			testCase.Prompt,
 			testCase.RiskScore,
-			"test",
-			0,
+			mockResource,
 		)
 
 		latency := time.Since(start)
@@ -146,12 +157,20 @@ func (s *AITestSuite) TestConsistency() {
 
 		responses := make([]string, 3)
 		for i := 0; i < 3; i++ {
+			mockResource := &cloud.ResourceV2{
+				ID:           "test-instance",
+				Type:         "t2.micro",
+				Provider:     "aws",
+				Region:       "us-east-1",
+				CPUUsage:     5.0,
+				MemoryUsage:  15.0,
+				CostPerMonth: 25.0,
+			}
 			resp, err := s.orchestrator.Analyze(
 				context.Background(),
 				prompt,
 				2.0,
-				"test",
-				0,
+				mockResource,
 			)
 
 			if err != nil {

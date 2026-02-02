@@ -2,11 +2,11 @@ package ai
 
 import (
 	"context"
-	"log/slog" // Use modern structured logging
-	"os"
 	"testing"
 
 	"github.com/project-atlas/atlas/internal/cloud"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // ... (TestGeminiFlashClient, TestGeminiProClient, etc. remain the same)
@@ -22,18 +22,18 @@ func TestSwarmOrchestratorFallback(t *testing.T) {
 	}
 
 	factory, _ := NewAIClientFactory(config)
-	
+
 	// FIX 1: Use slog instead of log
 	orchestrator := &UnifiedOrchestrator{
 		factory: factory,
-		logger:  testLogger(t), 
+		logger:  testLogger(),
 	}
 
 	ctx := context.Background()
 
 	// FIX 2: Correct arguments for orchestrator.Analyze
-	// want (context.Context, prompt string, risk float64, resource *cloud.Resource)
-	mockResource := &cloud.Resource{
+	// want (context.Context, prompt string, risk float64, resource *cloud.ResourceV2)
+	mockResource := &cloud.ResourceV2{
 		ID:   "test-instance",
 		Type: "ec2",
 	}
@@ -54,14 +54,10 @@ func TestSwarmOrchestratorFallback(t *testing.T) {
 
 // Helper functions
 
-func getTestAPIKey(envVar string) string {
-	// Allow overriding via environment variables for local testing
-	return os.Getenv(envVar)
-}
-
-// FIX 3: Updated to return *slog.Logger to satisfy struct literal
-func testLogger(t *testing.T) *slog.Logger {
-	return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
+// testLogger returns a zap logger for tests
+func testLogger() *zap.Logger {
+	config := zap.NewDevelopmentConfig()
+	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	logger, _ := config.Build()
+	return logger
 }

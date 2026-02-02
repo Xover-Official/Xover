@@ -52,8 +52,7 @@ func NewSQLiteLedger(dbPath string) (*SQLiteLedger, error) {
 }
 
 // RecordAction records a new action in the ledger
-func (s *SQLiteLedger) RecordAction(action Action) error {
-	ctx := context.Background()
+func (s *SQLiteLedger) RecordAction(ctx context.Context, action *Action) error {
 
 	payloadJSON, err := json.Marshal(action.Payload)
 	if err != nil {
@@ -93,8 +92,7 @@ func (s *SQLiteLedger) RecordAction(action Action) error {
 }
 
 // GetPendingActions retrieves all pending actions for recovery
-func (s *SQLiteLedger) GetPendingActions() ([]Action, error) {
-	ctx := context.Background()
+func (s *SQLiteLedger) GetPendingActions(ctx context.Context) ([]Action, error) {
 
 	query := `
 		SELECT id, resource_id, action_type, status, checksum, payload, reasoning,
@@ -142,8 +140,7 @@ func (s *SQLiteLedger) GetPendingActions() ([]Action, error) {
 }
 
 // MarkComplete marks an action as completed
-func (s *SQLiteLedger) MarkComplete(actionID string) error {
-	ctx := context.Background()
+func (s *SQLiteLedger) MarkComplete(ctx context.Context, actionID string) error {
 
 	query := `UPDATE actions SET status = 'completed', completed_at = ? WHERE id = ?`
 
@@ -156,8 +153,7 @@ func (s *SQLiteLedger) MarkComplete(actionID string) error {
 }
 
 // MarkFailed marks an action as failed with an error message
-func (s *SQLiteLedger) MarkFailed(actionID string, errorMsg string) error {
-	ctx := context.Background()
+func (s *SQLiteLedger) MarkFailed(ctx context.Context, actionID string, errorMsg string) error {
 
 	query := `UPDATE actions SET status = 'failed', completed_at = ?, error_message = ? WHERE id = ?`
 
@@ -170,8 +166,7 @@ func (s *SQLiteLedger) MarkFailed(actionID string, errorMsg string) error {
 }
 
 // GetActionByChecksum retrieves an action by its checksum (for idempotency)
-func (s *SQLiteLedger) GetActionByChecksum(checksum string) (*Action, error) {
-	ctx := context.Background()
+func (s *SQLiteLedger) GetActionByChecksum(ctx context.Context, checksum string) (*Action, error) {
 
 	query := `
 		SELECT id, resource_id, action_type, status, checksum, payload, reasoning,
@@ -213,8 +208,7 @@ func (s *SQLiteLedger) GetActionByChecksum(checksum string) (*Action, error) {
 }
 
 // GetStats returns statistics about the ledger
-func (s *SQLiteLedger) GetStats() (map[string]int, error) {
-	ctx := context.Background()
+func (s *SQLiteLedger) GetStats(ctx context.Context) (map[string]int, error) {
 
 	query := `
 		SELECT 

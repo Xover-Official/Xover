@@ -29,7 +29,7 @@ func NewOpenRouterClient(apiKey string) *OpenRouterClient {
 }
 
 // Analyze calls any model through OpenRouter
-func (c *OpenRouterClient) Analyze(request AIRequest, modelName string) (*AIResponse, error) {
+func (c *OpenRouterClient) Analyze(ctx context.Context, request AIRequest, modelName string) (*AIResponse, error) {
 	startTime := time.Now()
 
 	reqBody := map[string]interface{}{
@@ -49,7 +49,7 @@ func (c *OpenRouterClient) Analyze(request AIRequest, modelName string) (*AIResp
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequest("POST", c.endpoint, bytes.NewBuffer(jsonData))
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -138,6 +138,6 @@ func (c *OpenRouterClient) HealthCheck(ctx context.Context, model string) error 
 		Temperature: 0.1,
 	}
 
-	_, err := c.Analyze(testReq, model)
+	_, err := c.Analyze(ctx, testReq, model)
 	return err
 }

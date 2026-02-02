@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"log/slog"
 	"os"
 
 	"github.com/project-atlas/atlas/internal/ai"
@@ -13,6 +12,7 @@ import (
 	"github.com/project-atlas/atlas/internal/manager"
 	"github.com/project-atlas/atlas/internal/persistence"
 	"github.com/project-atlas/atlas/internal/worker"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -43,7 +43,7 @@ func runManager() {
 
 	// Initialize PostgreSQL ledger
 	log.Println("📊 Connecting to PostgreSQL...")
-	ledger, err := persistence.NewPostgresLedger("host=localhost user=atlas dbname=atlas sslmode=disable")
+	ledger, err := persistence.NewPostgresLedger(cfg.Database.DSN)
 	if err != nil {
 		log.Fatalf("❌ PostgreSQL connection failed: %v", err)
 	}
@@ -62,7 +62,7 @@ func runManager() {
 		CacheAddr:    "redis:6379",
 	}
 
-	orchestrator, err := ai.NewUnifiedOrchestrator(aiCfg, tokenTracker, slog.Default())
+	orchestrator, err := ai.NewUnifiedOrchestrator(aiCfg, tokenTracker, zap.NewExample())
 	if err != nil {
 		log.Fatalf("❌ AI orchestrator initialization failed: %v", err)
 	}
@@ -102,7 +102,7 @@ func runWorker() {
 
 	// Initialize PostgreSQL ledger
 	log.Println("📊 Connecting to PostgreSQL...")
-	ledger, err := persistence.NewPostgresLedger("host=localhost user=atlas dbname=atlas sslmode=disable")
+	ledger, err := persistence.NewPostgresLedger(cfg.Database.DSN)
 	if err != nil {
 		log.Fatalf("❌ PostgreSQL connection failed: %v", err)
 	}
@@ -121,7 +121,7 @@ func runWorker() {
 		CacheAddr:    "redis:6379",
 	}
 
-	orchestrator, err := ai.NewUnifiedOrchestrator(aiCfg, tokenTracker, slog.Default())
+	orchestrator, err := ai.NewUnifiedOrchestrator(aiCfg, tokenTracker, zap.NewExample())
 	if err != nil {
 		log.Fatalf("❌ AI orchestrator initialization failed: %v", err)
 	}

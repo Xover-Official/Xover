@@ -1,9 +1,11 @@
 package ai
 
 import (
+	"context"
 	"encoding/json"
-	"os"
-	"sync"
+	"fmt"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type MemoryEntry struct {
@@ -13,58 +15,64 @@ type MemoryEntry struct {
 	Timestamp  string `json:"timestamp"`
 }
 
+// ProjectMemory now uses Redis for distributed persistence
 type ProjectMemory struct {
-	Entries []MemoryEntry `json:"entries"`
-	mu      sync.Mutex
-	path    string
+	client *redis.Client
+	prefix string
 }
 
-func NewProjectMemory(path string) *ProjectMemory {
-	m := &ProjectMemory{path: path}
-	m.Load()
-	return m
+func NewProjectMemory(client *redis.Client) *ProjectMemory {
+	return &ProjectMemory{
+		client: client,
+		prefix: "talos:memory:",
+	}
 }
 
-func (m *ProjectMemory) Load() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	data, err := os.ReadFile(m.path)
-	if err != nil {
-		return err
+// AddEntry pushes a new memory entry to the Redis list
+func (m *ProjectMemory) AddEntry(ctx context.Context, entry MemoryEntry) error {
+	if entry.ResourceID == "" {
+		return fmt.Errorf("cannot add memory entry: resource ID is empty")
 	}
 
-	return json.Unmarshal(data, &m.Entries)
-}
-
-func (m *ProjectMemory) Save() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	data, err := json.MarshalIndent(m.Entries, "", "  ")
-	if err != nil {
-		return err
+	if entry.ResourceID == "" {
+		return fmt.Errorf("cannot add memory entry: resource ID is empty")
 	}
 
-	return os.WriteFile(m.path, data, 0644)
+	data, err := json.Marshal(entry)
+	if err != nil {
+		return fmt.Errorf("failed to marshal memory entry: %w", err)
+	}
+
+	// Use resource-specific key to prevent history eviction collisions
+	key := m.prefix + entry.ResourceID
+
+	// Push to head and keep last 50 entries per resource (sufficient for context window)
+	pipe := m.client.Pipeline()
+	pipe.LPush(ctx, key, data)
+	pipe.LTrim(ctx, key, 0, 49)
+	_, err = pipe.Exec(ctx)
+	return err
 }
 
-func (m *ProjectMemory) AddEntry(entry MemoryEntry) {
-	m.mu.Lock()
-	m.Entries = append(m.Entries, entry)
-	m.mu.Unlock()
-	m.Save()
-}
+// GetDecisionsForResource retrieves entries for a specific resource
+func (m *ProjectMemory) GetDecisionsForResource(ctx context.Context, id string) ([]MemoryEntry, error) {
+	if id == "" {
+		return nil, fmt.Errorf("cannot retrieve decisions: resource ID is empty")
+	}
 
-func (m *ProjectMemory) GetDecisionsForResource(id string) []MemoryEntry {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	// Fetch only items for this specific resource (O(1) lookup)
+	key := m.prefix + id
+	items, err := m.client.LRange(ctx, key, 0, -1).Result()
+	if err != nil {
+		return nil, err
+	}
 
 	var matched []MemoryEntry
-	for _, e := range m.Entries {
-		if e.ResourceID == id {
-			matched = append(matched, e)
+	for _, item := range items {
+		var entry MemoryEntry
+		if err := json.Unmarshal([]byte(item), &entry); err == nil {
+			matched = append(matched, entry)
 		}
 	}
-	return matched
+	return matched, nil
 }

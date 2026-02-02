@@ -1,48 +1,24 @@
 param (
-    [string]$Command = "help"
+    [string]$Mode = "Development",
+    [string]$Command = "none"
 )
 
-$ErrorActionPreference = "Stop"
-
-function Show-Help {
-    Write-Host "Usage: .\manage.ps1 [command]"
-    Write-Host "Commands:"
-    Write-Host "  build       - Build the application binaries"
-    Write-Host "  run         - Build and run the application"
-    Write-Host "  run-engine  - Run the engine directly (go run)"
-    Write-Host "  test        - Run unit tests"
-    Write-Host "  clean       - Clean build artifacts"
+if ($Mode -eq "Production") {
+    $env:GOGC = "50"
+    Write-Host "--- ATLAS ENGINE: PRODUCTION MODE (32GB OPTIMIZED) ---"
+} else {
+    Write-Host "--- ATLAS ENGINE: DEVELOPMENT MODE ---"
 }
 
-if ($Command -eq "build") {
-    Write-Host "🔨 Building Talos..."
-    if (-not (Test-Path "bin")) { New-Item -ItemType Directory -Path "bin" | Out-Null }
-    
-    $env:CGO_ENABLED="0"
-    go build -o bin/talos.exe ./cmd/atlas
-    if (Test-Path "./cmd/talos-cli") {
-        go build -o bin/talos-cli.exe ./cmd/talos-cli
-    }
-    Write-Host "✅ Build complete."
-}
-elseif ($Command -eq "run") {
-    Write-Host "🔥 Starting Talos..."
-    & .\manage.ps1 build
-    ./bin/talos.exe
-}
-elseif ($Command -eq "run-engine") {
-    Write-Host "🔥 Starting Talos Engine (Dev Mode)..."
-    go run ./cmd/atlas/main.go
-}
-elseif ($Command -eq "test") {
-    Write-Host "🧪 Running Unit Tests..."
-    go test -v ./internal/... ./cmd/...
-}
+if ($Command -eq "run-engine") {
+    Write-Host "Launching Atlas Engine..."
+    .\atlas.exe --config config.yaml --scan-all
+} 
 elseif ($Command -eq "clean") {
-    Write-Host "🧹 Cleaning up..."
-    if (Test-Path "bin") { Remove-Item -Recurse -Force "bin" }
-    Write-Host "✅ Clean complete."
+    Write-Host "Cleaning artifacts..."
+    Remove-Item -Path ".\atlas.exe", ".\demo_risk.exe" -ErrorAction SilentlyContinue
+    Write-Host "Clean complete."
 }
 else {
-    Show-Help
+    Write-Host "Environment ready. Use -Command run-engine to start."
 }

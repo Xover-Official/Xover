@@ -30,8 +30,7 @@ func NewPostgresLedger(connString string) (*PostgresLedger, error) {
 }
 
 // RecordAction records a new action in the ledger
-func (p *PostgresLedger) RecordAction(action Action) error {
-	ctx := context.Background()
+func (p *PostgresLedger) RecordAction(ctx context.Context, action *Action) error {
 
 	payloadJSON, err := json.Marshal(action.Payload)
 	if err != nil {
@@ -67,8 +66,7 @@ func (p *PostgresLedger) RecordAction(action Action) error {
 }
 
 // GetPendingActions retrieves all pending actions for recovery
-func (p *PostgresLedger) GetPendingActions() ([]Action, error) {
-	ctx := context.Background()
+func (p *PostgresLedger) GetPendingActions(ctx context.Context) ([]Action, error) {
 
 	query := `
 		SELECT id, resource_id, action_type, status, checksum, payload,
@@ -115,8 +113,7 @@ func (p *PostgresLedger) GetPendingActions() ([]Action, error) {
 }
 
 // MarkComplete marks an action as completed
-func (p *PostgresLedger) MarkComplete(actionID string) error {
-	ctx := context.Background()
+func (p *PostgresLedger) MarkComplete(ctx context.Context, actionID string) error {
 
 	query := `
 		UPDATE actions
@@ -133,8 +130,7 @@ func (p *PostgresLedger) MarkComplete(actionID string) error {
 }
 
 // MarkFailed marks an action as failed with an error message
-func (p *PostgresLedger) MarkFailed(actionID string, errorMsg string) error {
-	ctx := context.Background()
+func (p *PostgresLedger) MarkFailed(ctx context.Context, actionID string, errorMsg string) error {
 
 	query := `
 		UPDATE actions
@@ -151,8 +147,7 @@ func (p *PostgresLedger) MarkFailed(actionID string, errorMsg string) error {
 }
 
 // GetActionByChecksum retrieves an action by its checksum (for idempotency)
-func (p *PostgresLedger) GetActionByChecksum(checksum string) (*Action, error) {
-	ctx := context.Background()
+func (p *PostgresLedger) GetActionByChecksum(ctx context.Context, checksum string) (*Action, error) {
 
 	query := `
 		SELECT id, resource_id, action_type, status, checksum, payload,
@@ -198,8 +193,7 @@ func (p *PostgresLedger) Close() {
 }
 
 // GetStats returns statistics about the ledger
-func (p *PostgresLedger) GetStats() (map[string]int, error) {
-	ctx := context.Background()
+func (p *PostgresLedger) GetStats(ctx context.Context) (map[string]int, error) {
 
 	query := `
 		SELECT 

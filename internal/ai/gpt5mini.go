@@ -31,7 +31,7 @@ func NewGPT5MiniClient(apiKey string) *GPT5MiniClient {
 }
 
 // Analyze implements AIClient interface with reasoning
-func (c *GPT5MiniClient) Analyze(request AIRequest) (*AIResponse, error) {
+func (c *GPT5MiniClient) Analyze(ctx context.Context, request AIRequest) (*AIResponse, error) {
 	startTime := time.Now()
 
 	// Enhanced prompt for reasoning
@@ -64,7 +64,7 @@ Think step-by-step and provide:
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequest("POST", c.endpoint, bytes.NewBuffer(jsonData))
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -168,6 +168,6 @@ func (c *GPT5MiniClient) HealthCheck(ctx context.Context) error {
 		Temperature: 0.1,
 	}
 
-	_, err := c.Analyze(testReq)
+	_, err := c.Analyze(ctx, testReq)
 	return err
 }

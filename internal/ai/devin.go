@@ -31,7 +31,7 @@ func NewDevinClient(apiKey string) *DevinClient {
 }
 
 // Analyze implements AIClient interface for critical decisions
-func (c *DevinClient) Analyze(request AIRequest) (*AIResponse, error) {
+func (c *DevinClient) Analyze(ctx context.Context, request AIRequest) (*AIResponse, error) {
 	startTime := time.Now()
 
 	// Enhanced prompt for critical infrastructure decisions
@@ -64,7 +64,7 @@ Provide comprehensive analysis:`, request.Prompt)
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequest("POST", c.endpoint, bytes.NewBuffer(jsonData))
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -135,6 +135,6 @@ func (c *DevinClient) HealthCheck(ctx context.Context) error {
 		Temperature: 0.1,
 	}
 
-	_, err := c.Analyze(testReq)
+	_, err := c.Analyze(ctx, testReq)
 	return err
 }

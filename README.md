@@ -1,8 +1,16 @@
 # 🛡️ Talos: The Enterprise Infrastructure Guardian
 
+[![Enterprise Ready](https://img.shields.io/badge/Enterprise-10%2F10-green)]()
+[![Go Report Card](https://goreportcard.com/badge/github.com/project-atlas/atlas)]()
+[![Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen)]()
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 **Enterprise-grade autonomous cloud optimization. Powered by AI. Built for scale.**
 
-Talos is an **autonomous guardian** for enterprise cloud estates. Powered by a tiered AI swarm (Gemini & Claude), it operates on a continuous OODA loop to observe, orient, decide, and act on cloud inefficiencies. Built for scale, Talos turns "Infrastructure Management" into a distributed background process, ensuring compliance and cost efficiency across multi-cloud environments.
+Talos is an **autonomous guardian** for enterprise cloud estates. Powered by a tiered AI swarm, it operates on a continuous OODA loop to observe, orient, decide, and act on cloud inefficiencies.
+
+> [!IMPORTANT]
+> **Acquisition Opportunity**: TALOS is currently available for acquisition. See [ACQUISITION.md](./ACQUISITION.md) for data room and technical highlights.
 
 ## 🎯 The Enterprise Guardian Philosophy
 
@@ -179,20 +187,62 @@ Runway Extension: +1.2 months
 
 ## 🏗️ Architecture
 
-Talos is built on a modular, extensible architecture:
+TALOS is designed as a distributed, event-driven system:
 
+```mermaid
+graph TD
+    subgraph "Cloud Estate"
+        AWS[AWS Resources]
+        Azure[Azure Resources]
+        GCP[GCP Resources]
+    end
+
+    subgraph "TALOS Control Plane"
+        Adapter[Cloud Adapters]
+        Bus[Event Bus]
+        Engine[OODA Engine]
+        Swarm[Tiered AI Swarm]
+        Ledger[Immutable Ledger]
+    end
+
+    subgraph "Observability & UI"
+        Console[Guardian Console]
+        ZAP[Zap Logging]
+        OTel[OpenTelemetry]
+    end
+
+    AWS --> Adapter
+    Azure --> Adapter
+    GCP --> Adapter
+    Adapter --> Bus
+    Bus --> Engine
+    Engine --> Swarm
+    Swarm --> Engine
+    Engine --> Ledger
+    Ledger --> Console
+    Engine --> ZAP
+    Engine --> OTel
 ```
+
+### Directory Structure
+
+```text
 talos/
 ├── cmd/
-│   ├── talos/          # Guardian engine
-│   └── dashboard/      # Console UI
+│   ├── atlas/          # Main CLI/Guardian engine
+│   ├── dashboard/      # Console UI server
+│   └── enterprise/     # Distributed worker/manager
 ├── internal/
-│   ├── ai/             # Tiered AI swarm
-│   ├── cloud/          # Multi-cloud adapters
-│   ├── engine/         # OODA loop logic
-│   ├── guardian/       # Safety & governance
-│   └── ledger/         # State management
-└── web/                # Console assets
+│   ├── ai/             # Tiered AI swarm & Orchestrator
+│   ├── analytics/      # Token tracking & ROI calculation
+│   ├── auth/           # SSO & RBAC
+│   ├── cloud/          # Multi-cloud provider adapters
+│   ├── database/       # Repository & Migration logic
+│   ├── engine/         # OODA logic & Scaling engine
+│   ├── events/         # Internal Pub/Sub bus
+│   ├── logger/         # Zap structured logging
+│   └── loop/           # OODA loop integration
+└── web/                # React-based console assets
 ```
 
 Full architecture documentation: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)

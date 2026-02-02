@@ -1,17 +1,18 @@
 package persistence
 
 import (
+	"context"
 	"time"
 )
 
 // Ledger defines the interface for persistence operations
 type Ledger interface {
-	RecordAction(action Action) error
-	GetPendingActions() ([]Action, error)
-	MarkComplete(actionID string) error
-	MarkFailed(actionID string, errorMsg string) error
-	GetActionByChecksum(checksum string) (*Action, error)
-	GetStats() (map[string]int, error)
+	RecordAction(ctx context.Context, action *Action) error
+	GetPendingActions(ctx context.Context) ([]Action, error)
+	MarkComplete(ctx context.Context, actionID string) error
+	MarkFailed(ctx context.Context, actionID string, errorMsg string) error
+	GetActionByChecksum(ctx context.Context, checksum string) (*Action, error)
+	GetStats(ctx context.Context) (map[string]int, error)
 	Close()
 }
 

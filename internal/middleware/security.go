@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -107,8 +108,3 @@ func (m *SecurityManager) isBannedCountry(country string) bool {
 	}
 	return false
 }
-
-// Dummy fmt to compile
-type fmt struct{}
-
-func (fmt) Sprintf(format string, a ...interface{}) string { return format }

@@ -197,8 +197,56 @@ func (a *Adapter) fetchRDSInstances(ctx context.Context) ([]*cloud.ResourceV2, e
 	return resources, nil
 }
 
+// GetResource retrieves a single resource by its ID
+func (a *Adapter) GetResource(ctx context.Context, id string) (*cloud.ResourceV2, error) {
+	// For now, only support EC2 by ID
+	input := &ec2.DescribeInstancesInput{
+		InstanceIds: []string{id},
+	}
+	result, err := a.ec2Client.DescribeInstances(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to describe instance %s: %w", id, err)
+	}
+
+	if len(result.Reservations) == 0 || len(result.Reservations[0].Instances) == 0 {
+		return nil, fmt.Errorf("resource %s not found", id)
+	}
+
+	instance := result.Reservations[0].Instances[0]
+	metrics, err := a.getEC2Metrics(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get metrics for %s: %w", id, err)
+	}
+
+	cpu, _ := metrics["cpu_usage"].(float64)
+	mem, _ := metrics["memory_usage"].(float64)
+	cost, _ := mockInstancePricing[string(instance.InstanceType)]
+
+	resource := &cloud.ResourceV2{
+		ID:           *instance.InstanceId,
+		Type:         cloud.ResourceTypeEC2,
+		Provider:     cloud.ProviderAWS,
+		Region:       a.region,
+		Tags:         make(map[string]string),
+		State:        string(instance.State.Name),
+		CreatedAt:    *instance.LaunchTime,
+		CPUUsage:     cpu,
+		MemoryUsage:  mem,
+		CostPerMonth: cost,
+		Metadata:     map[string]interface{}{"instance_type": string(instance.InstanceType)},
+	}
+
+	for _, tag := range instance.Tags {
+		if tag.Key != nil && tag.Value != nil {
+			resource.Tags[*tag.Key] = *tag.Value
+		}
+	}
+
+	return resource, nil
+}
+
 // ApplyOptimization applies an optimization to an AWS resource
-func (a *Adapter) ApplyOptimization(ctx context.Context, resource *cloud.ResourceV2, action string) (string, float64, error) {
+func (a *Adapter) ApplyOptimization(ctx context.Context, resource *cloud.ResourceV2, action string) (float64, error) {
 	if a.dryRun {
 		// Simulate savings calculation for dry run
 		var estimatedSavings float64
@@ -206,21 +254,21 @@ func (a *Adapter) ApplyOptimization(ctx context.Context, resource *cloud.Resourc
 			// Mock downsizing: assume we save 50% of the cost.
 			estimatedSavings = resource.CostPerMonth * 0.5
 		}
-		return fmt.Sprintf("[DRY RUN] Would execute action '%s' on resource '%s'", action, resource.ID), estimatedSavings, nil
+		return estimatedSavings, nil
 	}
 
 	switch action {
 	case "stop":
-		result, err := a.stopEC2Instance(ctx, resource.ID)
+		_, err := a.stopEC2Instance(ctx, resource.ID)
 		// Stopping an instance saves its entire monthly cost.
-		return result, resource.CostPerMonth, err
+		return resource.CostPerMonth, err
 	case "resize":
-		result, err := a.resizeEC2Instance(ctx, resource.ID)
+		_, err := a.resizeEC2Instance(ctx, resource.ID)
 		// Mock downsizing: assume we save 50% of the cost.
 		estimatedSavings := resource.CostPerMonth * 0.5
-		return result, estimatedSavings, err
+		return estimatedSavings, err
 	default:
-		return "", 0, fmt.Errorf("unknown action: %s", action)
+		return 0, fmt.Errorf("unknown action: %s", action)
 	}
 }
 

@@ -1,0 +1,149 @@
+version: '3.8'
+
+services:
+  # TALOS Core Application
+  talos-core:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: talos-atlas
+    ports:
+      - "8080:8080"
+      - "9091:9091"  # Metrics endpoint
+    environment:
+      - TALOS_ENV=demo
+      - REDIS_URL=redis://redis:6379
+      - AWS_REGION=us-east-1
+      - AZURE_REGION=east-us
+      - GCP_REGION=us-central1
+      - PROMETHEUS_ENABLED=true
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - TEAMS_WEBHOOK_URL=${TEAMS_WEBHOOK_URL:-}
+      - JWT_SECRET=demo-jwt-secret-change-in-production
+      - LOG_LEVEL=info
+    depends_on:
+      - redis
+      - prometheus
+      - grafana
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - talos-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis for Caching and Session Storage
+  redis:
+    image: redis:7-alpine
+    container_name: talos-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - talos-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus for Metrics Collection
+  prometheus:
+    image: prom/prometheus:v2.40.0
+    container_name: talos-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./docker/prometheus/rules:/etc/prometheus/rules
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - talos-network
+    restart: unless-stopped
+
+  # Grafana for Visualization
+  grafana:
+    image: grafana/grafana:9.3.0
+    container_name: talos-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=talos-demo
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - talos-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  # Demo Data Generator
+  demo-data:
+    build:
+      context: .
+      dockerfile: Dockerfile.demo
+    container_name: talos-demo-data
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DEMO_MODE=true
+      - GENERATE_INTERVAL=30s
+    depends_on:
+      - redis
+      - talos-core
+    networks:
+      - talos-network
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy (Optional)
+  nginx:
+    image: nginx:alpine
+    container_name: talos-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - talos-core
+      - grafana
+    networks:
+      - talos-network
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+networks:
+  talos-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

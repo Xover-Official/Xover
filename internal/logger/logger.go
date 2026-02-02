@@ -1,10 +1,11 @@
 package logger
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-	"time"
+	"sync"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type Agent string
@@ -17,42 +18,55 @@ const (
 	Sentinel   Agent = "Sentinel"
 )
 
-type LogEntry struct {
-	Timestamp time.Time     `json:"timestamp"`
-	Agent     Agent         `json:"agent"`
-	Action    string        `json:"action"`
-	Status    string        `json:"status"`
-	Metadata  string        `json:"metadata,omitempty"`
-	Latency   time.Duration `json:"latency,omitempty"`
-	Tokens    int           `json:"tokens,omitempty"`
+var (
+	globalLogger *zap.Logger
+	loggerOnce   sync.Once
+)
+
+// GetLogger returns the global zap logger, initializing it if necessary
+func GetLogger() *zap.Logger {
+	loggerOnce.Do(func() {
+		config := zap.NewProductionConfig()
+		config.OutputPaths = []string{"stdout", "SESSION_LOG.json"}
+		config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+
+		var err error
+		globalLogger, err = config.Build()
+		if err != nil {
+			fmt.Printf("Failed to initialize logger: %v\n", err)
+			// Fallback to a basic logger if configuration fails
+			globalLogger = zap.NewExample()
+		}
+	})
+	return globalLogger
 }
 
+// LogAction logs an action with basic metadata
 func LogAction(agent Agent, action, status, metadata string) error {
-	return LogFullAction(agent, action, status, metadata, 0, 0)
+	GetLogger().Info(action,
+		zap.String("agent", string(agent)),
+		zap.String("status", status),
+		zap.String("metadata", metadata),
+	)
+	return nil
 }
 
-func LogFullAction(agent Agent, action, status, metadata string, latency time.Duration, tokens int) error {
-	entry := LogEntry{
-		Timestamp: time.Now(),
-		Agent:     agent,
-		Action:    action,
-		Status:    status,
-		Metadata:  metadata,
-		Latency:   latency,
-		Tokens:    tokens,
-	}
+// LogFullAction logs an action with full metadata including latency and tokens
+func LogFullAction(agent Agent, action, status, metadata string, latency int64, tokens int) error {
+	GetLogger().Info(action,
+		zap.String("agent", string(agent)),
+		zap.String("status", status),
+		zap.String("metadata", metadata),
+		zap.Int64("latency_ms", latency),
+		zap.Int("tokens", tokens),
+	)
+	return nil
+}
 
-	f, err := os.OpenFile("SESSION_LOG.json", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
+// Sync flushes any buffered log entries
+func Sync() error {
+	if globalLogger != nil {
+		return globalLogger.Sync()
 	}
-	defer f.Close()
-
-	encoder := json.NewEncoder(f)
-	if err := encoder.Encode(entry); err != nil {
-		return err
-	}
-
-	fmt.Printf("[%s] %s: %s (%s)\n", entry.Agent, entry.Action, entry.Status, entry.Metadata)
 	return nil
 }

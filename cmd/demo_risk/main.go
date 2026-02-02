@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -17,9 +18,14 @@ func main() {
 	simulator := cloud.NewSimulator()
 
 	// List mock resources
-	resources, err := simulator.ListResources()
+	resources, err := simulator.FetchResources(context.Background())
 	if err != nil {
 		log.Fatalf("Failed to list resources: %v", err)
+	}
+
+	if len(resources) == 0 {
+		fmt.Println("No resources found for analysis")
+		return
 	}
 
 	for _, res := range resources {
@@ -36,6 +42,7 @@ func main() {
 			MemoryUsage: res.MemoryUsage,
 			MeasuredAt:  time.Now(),
 		}
+
 		result := riskEngine.CalculateScore(projectedImpact, metrics)
 
 		fmt.Printf("--- Recommendation ---\n")

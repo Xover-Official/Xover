@@ -34,7 +34,7 @@ func NewAzureAdapter(subscriptionID string) (*AzureAdapter, error) {
 }
 
 // FetchResources returns VM resources
-func (a *AzureAdapter) FetchResources(ctx context.Context) ([]cloud.ResourceJSON, error) {
+func (a *AzureAdapter) FetchResources(ctx context.Context) ([]*cloud.ResourceV2, error) {
 	vmResources, err := a.fetchVMs()
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch VMs: %w", err)
@@ -55,23 +55,21 @@ func (a *AzureAdapter) ListZones(ctx context.Context, region string) ([]string, 
 }
 
 // fetchVMs retrieves VM resources
-func (a *AzureAdapter) fetchVMs() ([]cloud.ResourceJSON, error) {
-	resource := cloud.ResourceJSON{
-		ID:          "vm-placeholder",
-		Type:        "azure-vm",
-		CurrentType: "Standard_D2s_v3",
-		Region:      "eastus",
-		Tags:        make(map[string]string),
-		Metrics: map[string]interface{}{
-			"cpu_usage":    45.0,
-			"memory_usage": 55.0,
-		},
-		MonthlyCost: 150.0,
+func (a *AzureAdapter) fetchVMs() ([]*cloud.ResourceV2, error) {
+	resource := &cloud.ResourceV2{
+		ID:           "vm-placeholder",
+		Type:         "azure-vm",
+		Provider:     cloud.ProviderAzure,
+		Region:       "eastus",
+		Tags:         make(map[string]string),
+		CPUUsage:     45.0,
+		MemoryUsage:  55.0,
+		CostPerMonth: 150.0,
 	}
-	return []cloud.ResourceJSON{resource}, nil
+	return []*cloud.ResourceV2{resource}, nil
 }
 
 // ApplyOptimization updated to match interface signature
-func (a *AzureAdapter) ApplyOptimization(ctx context.Context, resourceID, action string) (string, error) {
-	return fmt.Sprintf("Applied %s to Azure resource %s", action, resourceID), nil
+func (a *AzureAdapter) ApplyOptimization(ctx context.Context, resource *cloud.ResourceV2, action string) (string, float64, error) {
+	return fmt.Sprintf("Applied %s to Azure resource %s", action, resource.ID), 50.0, nil
 }

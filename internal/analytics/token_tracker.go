@@ -6,6 +6,9 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/project-atlas/atlas/internal/logger"
+	"go.uber.org/zap"
 )
 
 // TokenUsage tracks usage for a specific AI model
@@ -25,6 +28,8 @@ type TokenTracker struct {
 	ModelBreakdown  map[string]TokenUsage `json:"model_breakdown"`
 	StartTime       time.Time             `json:"start_time"`
 	persistPath     string
+	stopChan        chan struct{}
+	dirty           bool
 }
 
 // Model pricing (per 1M tokens)
@@ -42,12 +47,46 @@ func NewTokenTracker(persistPath string) *TokenTracker {
 		ModelBreakdown: make(map[string]TokenUsage),
 		StartTime:      time.Now(),
 		persistPath:    persistPath,
+		stopChan:       make(chan struct{}),
 	}
 
 	// Try to load existing data
 	tracker.Load()
 
+	// Start persistence loop
+	go tracker.persistLoop()
+
 	return tracker
+}
+
+func (t *TokenTracker) persistLoop() {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			t.mu.Lock()
+			if t.dirty {
+				t.saveInternal()
+				t.dirty = false
+			}
+			t.mu.Unlock()
+		case <-t.stopChan:
+			t.Close()
+			return
+		}
+	}
+}
+
+// Close stops the tracker and performs a final save
+func (t *TokenTracker) Close() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.dirty {
+		t.saveInternal()
+		t.dirty = false
+	}
 }
 
 // RecordUsage records token usage for a specific model
@@ -82,18 +121,17 @@ func (t *TokenTracker) RecordUsage(model string, tokens int) {
 	// Recalculate ROI
 	t.calculateROI()
 
-	// Persist to disk
-	t.save()
+	// Mark as dirty
+	t.dirty = true
 }
 
-// RecordSavings records projected savings from optimizations
 func (t *TokenTracker) RecordSavings(savingsUSD float64) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	t.TotalSavingsUSD += savingsUSD
 	t.calculateROI()
-	t.save()
+	t.dirty = true
 }
 
 // calculateROI calculates the net ROI (must be called with lock held)
@@ -158,18 +196,21 @@ func (t *TokenTracker) GenerateReport() string {
 	return report
 }
 
-// save persists the tracker state to disk
-func (t *TokenTracker) save() {
+// saveInternal persists the tracker state to disk (lock assumed held)
+func (t *TokenTracker) saveInternal() {
 	if t.persistPath == "" {
 		return
 	}
 
 	data, err := json.MarshalIndent(t, "", "  ")
 	if err != nil {
+		logger.GetLogger().Error("Failed to marshal token tracker data", zap.Error(err))
 		return
 	}
 
-	os.WriteFile(t.persistPath, data, 0644)
+	if err := os.WriteFile(t.persistPath, data, 0644); err != nil {
+		logger.GetLogger().Error("Failed to save token tracker data", zap.String("path", t.persistPath), zap.Error(err))
+	}
 }
 
 // GetBreakdown returns model breakdown statistics
@@ -214,8 +255,8 @@ func (t *TokenTracker) TrackAI(model string, tokens int, costUSD, savingsUSD flo
 	// Recalculate ROI
 	t.calculateROI()
 
-	// Persist to disk
-	t.save()
+	// Mark as dirty
+	t.dirty = true
 }
 
 // Load loads the tracker state from disk

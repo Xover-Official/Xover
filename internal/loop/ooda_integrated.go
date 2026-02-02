@@ -3,14 +3,16 @@ package loop
 import (
 	"context"
 	"fmt"
-	"log"
+	"sync"
 	"time"
 
 	"github.com/project-atlas/atlas/internal/ai"
 	"github.com/project-atlas/atlas/internal/analytics"
 	"github.com/project-atlas/atlas/internal/cloud"
 	"github.com/project-atlas/atlas/internal/config"
+	"github.com/project-atlas/atlas/internal/logger"
 	"github.com/project-atlas/atlas/internal/persistence"
+	"go.uber.org/zap"
 )
 
 // OODALoop implements the Observe-Orient-Decide-Act cycle
@@ -19,40 +21,45 @@ type OODALoop struct {
 	ledger       persistence.Ledger
 	orchestrator *ai.UnifiedOrchestrator
 	tokenTracker *analytics.TokenTracker
+	logger       *zap.Logger
 	stopChan     chan struct{}
 }
 
-// NewOODALoop creates a new OODA loop
-func NewOODALoop(cfg *config.Config, ledger persistence.Ledger, orchestrator *ai.UnifiedOrchestrator, tracker *analytics.TokenTracker) *OODALoop {
+// NewOODALoop creates a new OODA loop with zap logger
+func NewOODALoop(cfg *config.Config, ledger persistence.Ledger, orchestrator *ai.UnifiedOrchestrator, tracker *analytics.TokenTracker, l *zap.Logger) *OODALoop {
+	if l == nil {
+		l = logger.GetLogger()
+	}
 	return &OODALoop{
 		config:       cfg,
 		ledger:       ledger,
 		orchestrator: orchestrator,
 		tokenTracker: tracker,
+		logger:       l,
 		stopChan:     make(chan struct{}),
 	}
 }
 
 // Start begins the OODA loop
 func (o *OODALoop) Start() error {
-	log.Println("🔄 OODA Loop started")
+	o.logger.Info("🔄 OODA Loop started", zap.String("mode", o.config.Server.Mode))
 
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 
 	// Run immediately on start
 	if err := o.runCycle(); err != nil {
-		log.Printf("Initial cycle error: %v", err)
+		o.logger.Error("Initial cycle error", zap.Error(err))
 	}
 
 	for {
 		select {
 		case <-ticker.C:
 			if err := o.runCycle(); err != nil {
-				log.Printf("Cycle error: %v", err)
+				o.logger.Error("Cycle error", zap.Error(err))
 			}
 		case <-o.stopChan:
-			log.Println("🛑 OODA Loop stopped")
+			o.logger.Info("🛑 OODA Loop stopped")
 			return nil
 		}
 	}
@@ -65,41 +72,37 @@ func (o *OODALoop) Stop() {
 
 // runCycle executes one complete OODA cycle
 func (o *OODALoop) runCycle() error {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
 
-	log.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	log.Println("🔄 Starting new OODA cycle")
-	log.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	o.logger.Info("🔄 Starting new OODA loop cycle")
 
 	// 1. OBSERVE: Discover cloud resources
-	log.Println("👁️  OBSERVE: Discovering resources...")
 	resources, err := o.observe(ctx)
 	if err != nil {
 		return fmt.Errorf("observe failed: %w", err)
 	}
-	log.Printf("   Found %d resources\n", len(resources))
+	o.logger.Info("👁️ OBSERVE complete", zap.Int("count", len(resources)))
 
 	// 2. ORIENT: Analyze and calculate risk
-	log.Println("🧭 ORIENT: Analyzing resources...")
 	analyses := o.orient(ctx, resources)
-	log.Printf("   Analyzed %d resources\n", len(analyses))
+	o.logger.Info("🧭 ORIENT complete", zap.Int("analyzed", len(analyses)))
 
 	// 3. DECIDE: Use AI to determine optimizations
-	log.Println("🤔 DECIDE: Consulting AI swarm...")
 	decisions := o.decide(ctx, analyses)
-	log.Printf("   Made %d optimization decisions\n", len(decisions))
+	o.logger.Info("🤔 DECIDE complete", zap.Int("decisions", len(decisions)))
 
 	// 4. ACT: Apply optimizations
-	log.Println("⚡ ACT: Applying optimizations...")
 	applied := o.act(ctx, decisions)
-	log.Printf("   Applied %d optimizations\n", applied)
+	o.logger.Info("⚡ ACT complete", zap.Int("applied", applied))
 
 	// Print cycle summary
 	stats := o.tokenTracker.GetBreakdown()
-	log.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	log.Printf("✅ Cycle complete - Cost: $%.4f, Savings: $%.2f, ROI: %.1fx\n",
-		stats["total_cost"], stats["projected_savings"], stats["roi"])
-	log.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+	o.logger.Info("✅ Cycle complete",
+		zap.Float64("total_cost", stats["total_cost"].(float64)),
+		zap.Float64("projected_savings", stats["projected_savings"].(float64)),
+		zap.Float64("roi", stats["roi"].(float64)),
+	)
 
 	return nil
 }
@@ -158,59 +161,42 @@ func (o *OODALoop) orient(ctx context.Context, resources []*cloud.ResourceV2) []
 // decide uses AI to make optimization decisions
 func (o *OODALoop) decide(ctx context.Context, analyses []ResourceAnalysis) []Decision {
 	decisions := make([]Decision, 0)
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	// Concurrency control
+	semaphore := make(chan struct{}, 10)
 
 	for _, analysis := range analyses {
-		// Build prompt for AI
-		prompt := fmt.Sprintf(`Analyze this cloud resource:
-Resource: %s (%s)
-Type: %s
-CPU Usage: %.1f%%
-Memory Usage: %.1f%%
-Current Cost: $%.2f/month
-Risk Score: %.1f/10
+		wg.Add(1)
+		go func(a ResourceAnalysis) {
+			defer wg.Done()
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
 
-Should we optimize this resource? If yes, what specific action should we take?
-Provide a concise recommendation.`,
-			analysis.Resource.ID,
-			analysis.Resource.Provider,
-			analysis.Resource.Type,
-			analysis.Resource.CPUUsage,
-			analysis.Resource.MemoryUsage,
-			analysis.Resource.CostPerMonth,
-			analysis.RiskScore,
-		)
+			prompt := fmt.Sprintf("Analyze resource [%s] for optimization. Risk: %.1f", a.Resource.ID, a.RiskScore)
 
-		// Call AI orchestrator
-		response, err := o.orchestrator.Analyze(
-			ctx,
-			prompt,
-			analysis.RiskScore,
-			analysis.Resource,
-		)
+			response, err := o.orchestrator.Analyze(ctx, prompt, a.RiskScore, a.Resource)
+			if err != nil {
+				o.logger.Warn("AI analysis failed", zap.String("resource_id", a.Resource.ID), zap.Error(err))
+				return
+			}
 
-		if err != nil {
-			log.Printf("   ⚠️  AI analysis failed for %s: %v", analysis.Resource.ID, err)
-			continue
-		}
-
-		log.Printf("   🤖 Tier %s recommendation: %s",
-			response.Model,
-			truncate(response.Content, 80))
-
-		// Create decision
-		decision := Decision{
-			ResourceID:       analysis.Resource.ID,
-			Action:           analysis.RecommendedAction,
-			Reasoning:        response.Content,
-			Confidence:       response.Confidence,
-			RiskScore:        analysis.RiskScore,
-			EstimatedSavings: analysis.SavingsEstimate,
-			AIModel:          response.Model,
-		}
-
-		decisions = append(decisions, decision)
+			mu.Lock()
+			decisions = append(decisions, Decision{
+				ResourceID:       a.Resource.ID,
+				Action:           a.RecommendedAction,
+				Reasoning:        response.Content,
+				Confidence:       response.Confidence,
+				RiskScore:        a.RiskScore,
+				EstimatedSavings: a.SavingsEstimate,
+				AIModel:          response.Model,
+			})
+			mu.Unlock()
+		}(analysis)
 	}
 
+	wg.Wait()
 	return decisions
 }
 
@@ -221,15 +207,16 @@ func (o *OODALoop) act(ctx context.Context, decisions []Decision) int {
 	for _, decision := range decisions {
 		// Skip if in dry-run mode
 		if o.config.Cloud.DryRun {
-			log.Printf("   [DRY RUN] Would apply: %s to %s (saves $%.2f/mo)",
-				decision.Action, decision.ResourceID, decision.EstimatedSavings)
+			o.logger.Info("[DRY RUN] Optimization proposed",
+				zap.String("action", decision.Action),
+				zap.String("resource", decision.ResourceID),
+				zap.Float64("savings", decision.EstimatedSavings))
 			continue
 		}
 
 		// Skip low-confidence decisions
 		if decision.Confidence < 0.8 {
-			log.Printf("   ⏭️  Skipping %s (confidence %.2f < 0.8)",
-				decision.ResourceID, decision.Confidence)
+			o.logger.Debug("Skipping low-confidence decision", zap.String("resource", decision.ResourceID))
 			continue
 		}
 
@@ -240,16 +227,17 @@ func (o *OODALoop) act(ctx context.Context, decisions []Decision) int {
 			Status:           "pending",
 			RiskScore:        decision.RiskScore,
 			EstimatedSavings: decision.EstimatedSavings,
-			Reasoning:        decision.Reasoning,
+			Payload:          map[string]interface{}{"reasoning": decision.Reasoning, "model": decision.AIModel},
 		}
 
-		if err := o.ledger.RecordAction(action); err != nil {
-			log.Printf("   ❌ Failed to record action: %v", err)
+		if err := o.ledger.RecordAction(ctx, &action); err != nil {
+			o.logger.Error("Failed to record action", zap.Error(err))
 			continue
 		}
 
-		log.Printf("   ✅ Applied %s to %s (saves $%.2f/mo)",
-			decision.Action, decision.ResourceID, decision.EstimatedSavings)
+		o.logger.Info("Applied optimization",
+			zap.String("action", decision.Action),
+			zap.String("resource", decision.ResourceID))
 
 		applied++
 	}

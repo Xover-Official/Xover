@@ -2,7 +2,6 @@ package monitoring
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
@@ -36,54 +35,54 @@ const (
 type AlertType string
 
 const (
-	AlertTypePerformance    AlertType = "performance"
-	AlertTypeAvailability   AlertType = "availability"
-	AlertTypeSecurity       AlertType = "security"
-	AlertTypeCost           AlertType = "cost"
-	AlertTypeCapacity       AlertType = "capacity"
-	AlertTypeOptimization   AlertType = "optimization"
-	AlertTypeSystem         AlertType = "system"
+	AlertTypePerformance  AlertType = "performance"
+	AlertTypeAvailability AlertType = "availability"
+	AlertTypeSecurity     AlertType = "security"
+	AlertTypeCost         AlertType = "cost"
+	AlertTypeCapacity     AlertType = "capacity"
+	AlertTypeOptimization AlertType = "optimization"
+	AlertTypeSystem       AlertType = "system"
 )
 
 // Alert represents a monitoring alert
 type Alert struct {
-	ID          string                 `json:"id"`
-	Type        AlertType              `json:"type"`
-	Severity    AlertSeverity          `json:"severity"`
-	Status      AlertStatus            `json:"status"`
-	Title       string                 `json:"title"`
-	Description string                 `json:"description"`
-	EntityID    string                 `json:"entity_id"`
-	EntityType  string                 `json:"entity_type"`
-	Timestamp   time.Time              `json:"timestamp"`
-	Labels      map[string]string      `json:"labels"`
-	Annotations map[string]interface{} `json:"annotations"`
-	Threshold   *Threshold             `json:"threshold,omitempty"`
-	Current     float64                `json:"current_value"`
-	ResolvedAt  *time.Time             `json:"resolved_at,omitempty"`
-	SilencedUntil *time.Time           `json:"silenced_until,omitempty"`
+	ID            string                 `json:"id"`
+	Type          AlertType              `json:"type"`
+	Severity      AlertSeverity          `json:"severity"`
+	Status        AlertStatus            `json:"status"`
+	Title         string                 `json:"title"`
+	Description   string                 `json:"description"`
+	EntityID      string                 `json:"entity_id"`
+	EntityType    string                 `json:"entity_type"`
+	Timestamp     time.Time              `json:"timestamp"`
+	Labels        map[string]string      `json:"labels"`
+	Annotations   map[string]interface{} `json:"annotations"`
+	Threshold     *Threshold             `json:"threshold,omitempty"`
+	Current       float64                `json:"current_value"`
+	ResolvedAt    *time.Time             `json:"resolved_at,omitempty"`
+	SilencedUntil *time.Time             `json:"silenced_until,omitempty"`
 }
 
 // Threshold defines alerting thresholds
 type Threshold struct {
-	Metric    string  `json:"metric"`
-	Operator  string  `json:"operator"` // >, <, >=, <=, ==, !=
-	Value     float64 `json:"value"`
-	Duration  string  `json:"duration"` // e.g., "5m", "1h"
+	Metric   string  `json:"metric"`
+	Operator string  `json:"operator"` // >, <, >=, <=, ==, !=
+	Value    float64 `json:"value"`
+	Duration string  `json:"duration"` // e.g., "5m", "1h"
 }
 
 // AlertRule defines when to trigger alerts
 type AlertRule struct {
-	ID          string              `json:"id"`
-	Name        string              `json:"name"`
-	Type        AlertType          `json:"type"`
-	Severity    AlertSeverity      `json:"severity"`
-	Threshold   Threshold          `json:"threshold"`
-	Query       string              `json:"query"`
-	Labels      map[string]string  `json:"labels"`
-	Enabled     bool               `json:"enabled"`
-	Interval    time.Duration      `json:"interval"`
-	LastEval    time.Time          `json:"last_eval"`
+	ID        string            `json:"id"`
+	Name      string            `json:"name"`
+	Type      AlertType         `json:"type"`
+	Severity  AlertSeverity     `json:"severity"`
+	Threshold Threshold         `json:"threshold"`
+	Query     string            `json:"query"`
+	Labels    map[string]string `json:"labels"`
+	Enabled   bool              `json:"enabled"`
+	Interval  time.Duration     `json:"interval"`
+	LastEval  time.Time         `json:"last_eval"`
 }
 
 // NotificationChannel defines how alerts are sent
@@ -98,21 +97,21 @@ type NotificationChannel struct {
 
 // AlertManager manages alerts and notifications
 type AlertManager struct {
-	alerts     map[string]*Alert
-	rules      map[string]*AlertRule
-	channels   map[string]*NotificationChannel
-	mu         sync.RWMutex
-	logger     *log.Logger
-	metrics    *AlertMetrics
-	notifier   *Notifier
+	alerts   map[string]*Alert
+	rules    map[string]*AlertRule
+	channels map[string]*NotificationChannel
+	mu       sync.RWMutex
+	logger   *log.Logger
+	metrics  *AlertMetrics
+	notifier *Notifier
 }
 
 // AlertMetrics tracks alert-related metrics
 type AlertMetrics struct {
-	AlertsTotal     prometheus.Counter
-	AlertsActive    prometheus.Gauge
-	AlertsResolved  prometheus.Counter
-	AlertsByType    *prometheus.CounterVec
+	AlertsTotal      prometheus.Counter
+	AlertsActive     prometheus.Gauge
+	AlertsResolved   prometheus.Counter
+	AlertsByType     *prometheus.CounterVec
 	AlertsBySeverity *prometheus.CounterVec
 }
 
@@ -162,7 +161,7 @@ func NewAlertManager(logger *log.Logger) *AlertManager {
 func (am *AlertManager) AddRule(rule *AlertRule) {
 	am.mu.Lock()
 	defer am.mu.Unlock()
-	
+
 	am.rules[rule.ID] = rule
 	am.logger.Printf("Added alert rule: %s", rule.Name)
 }
@@ -171,7 +170,7 @@ func (am *AlertManager) AddRule(rule *AlertRule) {
 func (am *AlertManager) RemoveRule(ruleID string) {
 	am.mu.Lock()
 	defer am.mu.Unlock()
-	
+
 	delete(am.rules, ruleID)
 	am.logger.Printf("Removed alert rule: %s", ruleID)
 }
@@ -180,7 +179,7 @@ func (am *AlertManager) RemoveRule(ruleID string) {
 func (am *AlertManager) AddChannel(channel *NotificationChannel) {
 	am.mu.Lock()
 	defer am.mu.Unlock()
-	
+
 	am.channels[channel.ID] = channel
 	am.logger.Printf("Added notification channel: %s", channel.Name)
 }
@@ -220,11 +219,11 @@ func (am *AlertManager) evaluateRule(ctx context.Context, rule *AlertRule) error
 
 	// Check if threshold is breached
 	breached := am.checkThreshold(currentValue, rule.Threshold)
-	
+
 	rule.LastEval = time.Now()
 
 	alertID := fmt.Sprintf("%s-%s", rule.ID, rule.Type)
-	
+
 	am.mu.Lock()
 	defer am.mu.Unlock()
 
@@ -526,9 +525,9 @@ func DefaultAlertRules() []*AlertRule {
 func DefaultNotificationChannels() []*NotificationChannel {
 	return []*NotificationChannel{
 		{
-			ID:      "email-admin",
-			Name:    "Email Admin",
-			Type:    "email",
+			ID:   "email-admin",
+			Name: "Email Admin",
+			Type: "email",
 			Config: map[string]interface{}{
 				"to":      "admin@talos.io",
 				"subject": "Talos Alert",
@@ -536,9 +535,9 @@ func DefaultNotificationChannels() []*NotificationChannel {
 			Enabled: true,
 		},
 		{
-			ID:      "slack-alerts",
-			Name:    "Slack Alerts",
-			Type:    "slack",
+			ID:   "slack-alerts",
+			Name: "Slack Alerts",
+			Type: "slack",
 			Config: map[string]interface{}{
 				"webhook_url": "https://hooks.slack.com/services/...",
 				"channel":     "#alerts",
@@ -546,9 +545,9 @@ func DefaultNotificationChannels() []*NotificationChannel {
 			Enabled: true,
 		},
 		{
-			ID:      "pagerduty-critical",
-			Name:    "PagerDuty Critical",
-			Type:    "pagerduty",
+			ID:   "pagerduty-critical",
+			Name: "PagerDuty Critical",
+			Type: "pagerduty",
 			Config: map[string]interface{}{
 				"service_key": "your-pagerduty-service-key",
 			},

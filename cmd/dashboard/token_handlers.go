@@ -9,7 +9,7 @@ import (
 
 // Additional handlers that aren't in main.go
 
-func (s *server) handleTokenStats(w http.ResponseWriter, r *http.Request) {
+func (s *server) handleTokenStats(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 

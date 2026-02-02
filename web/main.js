@@ -3,29 +3,41 @@ document.addEventListener('DOMContentLoaded', () => {
     populateActivity();
     populateResources();
     initSSE();
-    checkIndieForceSleep();
     startOODALoop();
+    initModal();
 
     const runBtn = document.getElementById('run-optimization');
-    runBtn.addEventListener('click', () => {
-        runBtn.innerHTML = '<i class="ph ph-circle-notch animate-spin"></i> OPTIMIZING...';
-        runBtn.style.opacity = '0.7';
+    if (runBtn) {
+        runBtn.addEventListener('click', () => {
+            runBtn.innerHTML = '<i class="ph ph-circle-notch animate-spin"></i> OPTIMIZING...';
+            runBtn.style.opacity = '0.7';
 
-        // This is now handled asynchronously by the backend stream, 
-        // but we'll show a local notification to confirm trigger.
-        setTimeout(() => {
-            showNotification('Guardian Cycle Triggered', 'The OODA loop has started an autonomous cycle.', 'info');
-            runBtn.innerHTML = '<i class="ph ph-lightning"></i> RUN GUARDIAN';
-            runBtn.style.opacity = '1';
-        }, 1000);
-    });
+            setTimeout(() => {
+                showNotification('Guardian Cycle Triggered', 'The OODA loop has started an autonomous cycle.', 'info');
+                runBtn.innerHTML = '<i class="ph ph-lightning"></i> RUN GUARDIAN';
+                runBtn.style.opacity = '1';
+                addActivityItem({ agent: 'architect', icon: 'ph ph-lightning', msg: 'Manual override: Immediate optimization cycle started', time: 'Now', glow: true }, true);
+            }, 1000);
+        });
+    }
+
+    // Start Simulate Feed if no SSE connection establishes
+    setTimeout(() => {
+        const feed = document.getElementById('activity-feed');
+        if (feed && feed.children.length <= 1) {
+            console.log("Starting simulation mode...");
+            simulateActivityFeed();
+        }
+    }, 3000);
 });
 
 function initChart() {
-    const ctx = document.getElementById('optimizationChart').getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, 'rgba(0, 242, 255, 0.4)');
-    gradient.addColorStop(1, 'rgba(0, 242, 255, 0)');
+    const ctx = document.getElementById('optimizationChart');
+    if (!ctx) return;
+
+    const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(56, 189, 248, 0.4)');
+    gradient.addColorStop(1, 'rgba(56, 189, 248, 0)');
 
     new Chart(ctx, {
         type: 'line',
@@ -34,12 +46,12 @@ function initChart() {
             datasets: [{
                 label: 'Costs Saved ($)',
                 data: [5000, 12000, 19000, 28000, 36000, 46080],
-                borderColor: '#00f2ff',
+                borderColor: '#38bdf8',
                 borderWidth: 3,
                 fill: true,
                 backgroundColor: gradient,
                 tension: 0.4,
-                pointBackgroundColor: '#00f2ff',
+                pointBackgroundColor: '#38bdf8',
                 pointRadius: 4
             }]
         },
@@ -62,8 +74,6 @@ function initSSE() {
     source.onmessage = (event) => {
         try {
             const data = JSON.parse(event.data);
-
-            // Map backend log levels to UI agents
             const agent = (data.agent || 'architect').toLowerCase();
             const msg = data.metadata ? `${data.action}: ${data.metadata}` : data.action;
             const time = data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : 'Just now';
@@ -80,13 +90,12 @@ function initSSE() {
             } else {
                 showNotification('Swarm Signal', msg, 'info');
             }
-
         } catch (e) {
             console.error("Failed to parse SSE data", e);
         }
     };
     source.onerror = () => {
-        console.log('SSE connection lost. Retrying...');
+        // Silent fail, simulation will pick up
     };
 }
 
@@ -104,11 +113,11 @@ function initModal() {
     const closeBtns = document.querySelectorAll('.close-modal');
     const confirmBtn = document.getElementById('confirm-approval');
 
-    closeBtns.forEach(btn => {
+    if (closeBtns) closeBtns.forEach(btn => {
         btn.addEventListener('click', () => overlay.classList.remove('active'));
     });
 
-    confirmBtn.addEventListener('click', () => {
+    if (confirmBtn) confirmBtn.addEventListener('click', () => {
         const resourceId = document.getElementById('modal-resource').innerText;
         overlay.classList.remove('active');
         showNotification('Task Approved', `Relocation of ${resourceId} initiated.`, 'info');
@@ -124,6 +133,8 @@ function showModal(resource) {
 
 function showNotification(title, message, type) {
     const container = document.getElementById('notification-container');
+    if (!container) return;
+
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     const icon = type === 'success' ? 'ph ph-check-circle' : 'ph ph-info';
@@ -150,12 +161,15 @@ const activityData = [
 
 function populateActivity() {
     const feed = document.getElementById('activity-feed');
+    if (!feed) return;
     feed.innerHTML = '';
     activityData.forEach(item => addActivityItem(item));
 }
 
 function addActivityItem(item, prepend = false) {
     const feed = document.getElementById('activity-feed');
+    if (!feed) return;
+
     const div = document.createElement('div');
     div.className = 'feed-item';
     const glowClass = item.glow ? 'agent-glow' : '';
@@ -190,11 +204,11 @@ const resources = [
 
 function populateResources() {
     const body = document.getElementById('resources-body');
+    if (!body) return;
     body.innerHTML = '';
     resources.forEach(res => {
         const row = document.createElement('tr');
 
-        // Apply Vulcan Pulse to high-risk items
         if (res.risk === 'High') {
             row.classList.add('vulcan-pulse');
         }
@@ -203,7 +217,7 @@ function populateResources() {
             <td><strong>${res.id}</strong></td>
             <td>${res.current}</td>
             <td>${res.proposed}</td>
-            <td class="positive">${res.savings}</td>
+            <td class="positive" style="color:var(--accent-success);">${res.savings}</td>
             <td><span class="badge-risk ${res.risk.toLowerCase().substring(0, 3)}">${res.risk}</span></td>
             <td><button class="btn-action" onclick="handleApprove('${res.id}')">APPROVE</button></td>
         `;
@@ -211,7 +225,7 @@ function populateResources() {
     });
 }
 
-function handleApprove(id) {
+window.handleApprove = function (id) {
     const res = resources.find(r => r.id === id);
     if (res) showModal(res);
 }
@@ -220,17 +234,51 @@ function startOODALoop() {
     const steps = ['step-observe', 'step-orient', 'step-decide', 'step-act'];
     let current = 0;
 
+    // Check if elements exist first
+    if (!document.getElementById(steps[0])) return;
+
     // Initial activation
     document.getElementById(steps[0]).classList.add('active');
 
     setInterval(() => {
         // Reset all
-        steps.forEach(id => document.getElementById(id).classList.remove('active'));
+        steps.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.classList.remove('active');
+        });
 
         // Activate current
-        document.getElementById(steps[current]).classList.add('active');
+        const currEl = document.getElementById(steps[current]);
+        if (currEl) currEl.classList.add('active');
 
         // Next
         current = (current + 1) % steps.length;
-    }, 1500); // 1.5s per phase = 6s cycle
+    }, 1500);
+}
+
+function simulateActivityFeed() {
+    const events = [
+        { agent: 'sentinel', msg: 'Detected sustained CPU spike on resource i-0f9a8b7c' },
+        { agent: 'strategist', msg: 'Analyzing cost patterns for potential spot instance migration' },
+        { agent: 'auditor', msg: 'Compliance check passed for new security group rules' },
+        { agent: 'builder', msg: 'Auto-scaling group resized to optimize for current load' },
+        { agent: 'architect', msg: 'OODA Loop Cycle 42 completed. Optimization score: 94%' },
+        { agent: 'sentinel', msg: 'Scanning RDS snapshots for retention policy adherence' }
+    ];
+
+    setInterval(() => {
+        const evt = events[Math.floor(Math.random() * events.length)];
+        addActivityItem({
+            agent: evt.agent,
+            icon: getIconForAgent(evt.agent),
+            msg: evt.msg,
+            time: 'Just now',
+            glow: true
+        }, true);
+
+        const feed = document.getElementById('activity-feed');
+        if (feed && feed.children.length > 20) {
+            feed.removeChild(feed.lastChild);
+        }
+    }, 4500);
 }

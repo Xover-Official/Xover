@@ -1,0 +1,38 @@
+groups:
+- name: talos-alerts
+  rules:
+  - alert: TalosEngineOffline
+    expr: up{job="talos"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "TALOS engine is offline"
+      description: "The TALOS optimization engine hasn't reported health for over 1 minute."
+
+  - alert: HighRiskOptimizationPending
+    expr: talos_pending_actions_risk_score > 7.0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High risk optimization needs review"
+      description: "An optimization with a risk score above 7.0 has been pending for over 5 minutes."
+
+  - alert: AISwarmDegraded
+    expr: talos_ai_request_errors_total > 5
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "AI Swarm is experiencing errors"
+      description: "Multiple AI requests have failed in the last 2 minutes. The system may fallback to lower intelligence tiers."
+
+  - alert: BudgetThresholdExceeded
+    expr: talos_actual_cloud_cost > talos_budget_limit
+    for: 1h
+    labels:
+      severity: warning
+    annotations:
+      summary: "Cloud budget exceeded"
+      description: "Actual cloud costs have exceeded the defined budget limit."

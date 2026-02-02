@@ -3,33 +3,41 @@ package ai
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"github.com/project-atlas/atlas/internal/analytics"
 	"github.com/project-atlas/atlas/internal/cloud"
+	"go.uber.org/zap"
 )
+
+// AICache defines the interface for caching AI responses.
+// This decouples the orchestrator from the concrete Redis implementation.
+type AICache interface {
+	Get(ctx context.Context, prompt string) (*CachedResponse, error)
+	Set(ctx context.Context, prompt string, response *AIResponse) error
+	Close() error
+}
 
 // UnifiedOrchestrator manages AI calls through the factory with caching and retries
 type UnifiedOrchestrator struct {
 	factory      *AIClientFactory
 	tokenTracker *analytics.TokenTracker
-	cache        *RedisCache
-	logger       *slog.Logger
+	cache        AICache
+	logger       *zap.Logger
 }
 
-// NewUnifiedOrchestrator creates a new orchestrator with the given configuration
-func NewUnifiedOrchestrator(config *Config, tokenTracker *analytics.TokenTracker, logger *slog.Logger) (*UnifiedOrchestrator, error) {
+// NewUnifiedOrchestrator creates a new orchestrator with the given configuration and zap logger
+func NewUnifiedOrchestrator(config *Config, tokenTracker *analytics.TokenTracker, logger *zap.Logger) (*UnifiedOrchestrator, error) {
 	factory, err := NewAIClientFactory(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AI client factory: %w", err)
 	}
 
-	var cache *RedisCache
+	var cache AICache
 	if config.CacheEnabled && config.CacheAddr != "" {
 		cache, err = NewRedisCache(config.CacheAddr, "", 0, time.Hour)
 		if err != nil {
-			logger.Info("Redis cache unavailable", "error", err)
+			logger.Info("Redis cache unavailable", zap.Error(err))
 		} else {
 			logger.Info("Redis cache enabled")
 		}
@@ -45,11 +53,21 @@ func NewUnifiedOrchestrator(config *Config, tokenTracker *analytics.TokenTracker
 
 // Analyze routes request to appropriate AI tier based on risk score
 func (o *UnifiedOrchestrator) Analyze(ctx context.Context, prompt string, riskScore float64, resource *cloud.ResourceV2) (*AIResponse, error) {
+	if ctx == nil {
+		return nil, fmt.Errorf("context is required")
+	}
+	if prompt == "" {
+		return nil, fmt.Errorf("prompt is required")
+	}
+	if resource == nil {
+		return nil, fmt.Errorf("resource is required")
+	}
+
 	// Check cache first
 	if o.cache != nil {
 		cached, err := o.cache.Get(ctx, prompt)
 		if err == nil && cached != nil {
-			o.logger.Info("Cache HIT")
+			o.logger.Info("Cache HIT", zap.String("resource_id", resource.ID))
 			return cached.Response, nil
 		}
 	}
@@ -57,14 +75,20 @@ func (o *UnifiedOrchestrator) Analyze(ctx context.Context, prompt string, riskSc
 	// Get appropriate client for risk level
 	client := o.factory.GetClientForRisk(riskScore)
 
-	o.logger.Info("Routing to AI client", "risk_score", riskScore, "client_type", fmt.Sprintf("%T", client))
+	o.logger.Info("Routing to AI client", zap.Float64("risk_score", riskScore), zap.String("client_type", fmt.Sprintf("%T", client)))
+
+	// Dynamic token allocation based on risk tier
+	maxTokens := 1000
+	if riskScore >= 7.0 {
+		maxTokens = 4000 // High-risk tiers (Arbiter/Reasoning/Oracle) require more context
+	}
 
 	// Create request
 	request := AIRequest{
 		Prompt:       prompt,
 		ResourceType: resource.Type,
 		RiskScore:    riskScore,
-		MaxTokens:    1000,
+		MaxTokens:    maxTokens,
 		Temperature:  0.3,
 		Metadata: map[string]interface{}{
 			"resource_id":    resource.ID,
@@ -77,9 +101,9 @@ func (o *UnifiedOrchestrator) Analyze(ctx context.Context, prompt string, riskSc
 	}
 
 	// Analyze with retry logic
-	response, err := o.analyzeWithRetry(client, request, 3)
+	response, err := o.AnalyzeWithRetry(ctx, client, request, 3)
 	if err != nil {
-		o.logger.Error("AI analysis failed", "error", err)
+		o.logger.Error("AI analysis failed", zap.Error(err))
 		return nil, err
 	}
 
@@ -91,7 +115,7 @@ func (o *UnifiedOrchestrator) Analyze(ctx context.Context, prompt string, riskSc
 	// Cache the response
 	if o.cache != nil {
 		if err := o.cache.Set(ctx, prompt, response); err != nil {
-			o.logger.Warn("Failed to cache response", "error", err)
+			o.logger.Warn("Failed to cache response", zap.Error(err))
 		}
 	}
 
@@ -99,22 +123,35 @@ func (o *UnifiedOrchestrator) Analyze(ctx context.Context, prompt string, riskSc
 }
 
 // analyzeWithRetry implements retry logic for AI calls
-func (o *UnifiedOrchestrator) analyzeWithRetry(client AIClient, request AIRequest, maxRetries int) (*AIResponse, error) {
+func (o *UnifiedOrchestrator) AnalyzeWithRetry(ctx context.Context, client AIClient, request AIRequest, maxRetries int) (*AIResponse, error) {
 	var lastErr error
 
-	for attempt := 0; attempt < maxRetries; attempt++ {
+	for attempt := 0; attempt <= maxRetries; attempt++ {
 		if attempt > 0 {
-			o.logger.Info("Retrying AI analysis", "attempt", attempt+1, "max_retries", maxRetries)
-			time.Sleep(time.Duration(attempt) * time.Second)
+			// Exponential backoff: 1s, 2s, 4s...
+			backoff := time.Duration(1<<uint(attempt-1)) * time.Second
+			o.logger.Info("Retrying AI analysis", zap.Int("attempt", attempt), zap.Duration("backoff", backoff))
+
+			select {
+			case <-ctx.Done():
+				return nil, fmt.Errorf("context cancelled during retry backoff: %w", ctx.Err())
+			case <-time.After(backoff):
+				// Continue execution
+			}
 		}
 
-		response, err := client.Analyze(request)
+		response, err := client.Analyze(ctx, request)
 		if err == nil {
 			return response, nil
 		}
 
 		lastErr = err
-		o.logger.Warn("AI analysis attempt failed", "attempt", attempt+1, "error", err)
+		o.logger.Warn("AI analysis attempt failed", zap.Int("attempt", attempt), zap.Error(err))
+
+		// Fail fast if context is cancelled
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("context cancelled during analysis: %w", ctx.Err())
+		}
 	}
 
 	return nil, fmt.Errorf("AI analysis failed after %d attempts: %w", maxRetries, lastErr)

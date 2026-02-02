@@ -55,7 +55,7 @@ type DistributedWorker struct {
 func NewDistributedWorker(workerID string, cfg *config.Config, db persistence.Ledger, orchestrator *ai.UnifiedOrchestrator, tracker *analytics.TokenTracker) (*DistributedWorker, error) {
 	// Connect to Redis
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     cfg.Redis.Addr,
+		Addr:     cfg.Redis.Address,
 		Password: cfg.Redis.Password,
 		DB:       cfg.Redis.DB,
 	})
@@ -88,6 +88,12 @@ func NewDistributedWorker(workerID string, cfg *config.Config, db persistence.Le
 func (w *DistributedWorker) Start(ctx context.Context) error {
 	w.isRunning = true
 	log.Printf("🚀 Starting distributed worker: %s", w.id)
+
+	// Create healthy file for K8s probes
+	if err := os.WriteFile("/tmp/healthy", []byte("ok"), 0644); err != nil {
+		log.Printf("⚠️  Failed to create health file: %v", err)
+	}
+	defer os.Remove("/tmp/healthy")
 
 	// Start heartbeat goroutine
 	w.wg.Add(1)

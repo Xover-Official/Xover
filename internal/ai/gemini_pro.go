@@ -31,7 +31,7 @@ func NewGeminiProClient(apiKey string) *GeminiProClient {
 }
 
 // Analyze implements AIClient interface
-func (c *GeminiProClient) Analyze(request AIRequest) (*AIResponse, error) {
+func (c *GeminiProClient) Analyze(ctx context.Context, request AIRequest) (*AIResponse, error) {
 	startTime := time.Now()
 
 	reqBody := map[string]interface{}{
@@ -54,7 +54,7 @@ func (c *GeminiProClient) Analyze(request AIRequest) (*AIResponse, error) {
 	}
 
 	url := fmt.Sprintf("%s?key=%s", c.endpoint, c.apiKey)
-	httpReq, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -131,6 +131,6 @@ func (c *GeminiProClient) HealthCheck(ctx context.Context) error {
 		Temperature: 0.1,
 	}
 
-	_, err := c.Analyze(testReq)
+	_, err := c.Analyze(ctx, testReq)
 	return err
 }

@@ -1,18 +1,12 @@
 package cloud
 
 import (
+	"context"
 	"fmt"
 	"time"
-
-	"github.com/project-atlas/atlas/internal/risk"
 )
 
-type Provider interface {
-	ListResources() ([]*ResourceV2, error)
-	GetMetrics(resourceID string) (risk.CloudMetrics, error)
-	ApplyOptimization(resourceID string, newType string) (string, error)
-}
-
+// Simulator implements the CloudAdapter interface for testing and simulation.
 type Simulator struct {
 	MockResources []*ResourceV2
 }
@@ -22,50 +16,59 @@ func NewSimulator() *Simulator {
 		MockResources: []*ResourceV2{
 			{
 				ID:           "db-prod-01",
-				Type:         "rds",
-				Provider:     "aws",
+				Type:         ResourceTypeRDS,
+				Provider:     ProviderAWS,
 				Region:       "us-east-1",
 				State:        "running",
-				CPUUsage:     15.5,
-				MemoryUsage:  22.0,
+				CPUUsage:     0.155,
+				MemoryUsage:  0.220,
 				CostPerMonth: 450.00,
 				CreatedAt:    time.Now().Add(-30 * 24 * time.Hour),
-				ModifiedAt:   time.Now(),
 			},
 			{
 				ID:           "web-prod-01",
-				Type:         "ec2",
-				Provider:     "aws",
+				Type:         ResourceTypeEC2,
+				Provider:     ProviderAWS,
 				Region:       "us-east-1",
 				State:        "running",
-				CPUUsage:     45.2,
-				MemoryUsage:  67.8,
+				CPUUsage:     0.452,
+				MemoryUsage:  0.678,
 				CostPerMonth: 125.00,
 				CreatedAt:    time.Now().Add(-15 * 24 * time.Hour),
-				ModifiedAt:   time.Now(),
 			},
 		},
 	}
 }
 
-func (s *Simulator) ListResources() ([]*ResourceV2, error) {
+func (s *Simulator) FetchResources(ctx context.Context) ([]*ResourceV2, error) {
 	return s.MockResources, nil
 }
 
-func (s *Simulator) GetMetrics(resourceID string) (risk.CloudMetrics, error) {
+func (s *Simulator) GetResource(ctx context.Context, id string) (*ResourceV2, error) {
 	for _, r := range s.MockResources {
-		if r.ID == resourceID {
-			return risk.CloudMetrics{
-				CPUUsage:    r.CPUUsage,
-				MemoryUsage: r.MemoryUsage,
-				MeasuredAt:  time.Now(),
-			}, nil
+		if r.ID == id {
+			return r, nil
 		}
 	}
-	return risk.CloudMetrics{}, fmt.Errorf("resource not found: %s", resourceID)
+	return nil, fmt.Errorf("resource not found: %s", id)
 }
 
-func (s *Simulator) ApplyOptimization(resourceID string, newType string) (string, error) {
-	// Simulate an optimization action
-	return fmt.Sprintf("sim-opt-%s-to-%s", resourceID, newType), nil
+func (s *Simulator) ApplyOptimization(ctx context.Context, resource *ResourceV2, action string) (float64, error) {
+	// Simulate savings: 50% for resize/optimize, 100% for stop/terminate
+	switch action {
+	case "stop", "terminate":
+		return resource.CostPerMonth, nil
+	case "resize", "optimize":
+		return resource.CostPerMonth * 0.5, nil
+	default:
+		return 0, nil
+	}
+}
+
+func (s *Simulator) GetSpotPrice(zone, instanceType string) (float64, error) {
+	return 0.05, nil // Static mock price
+}
+
+func (s *Simulator) ListZones() ([]string, error) {
+	return []string{"us-east-1a", "us-east-1b", "us-east-1c"}, nil
 }

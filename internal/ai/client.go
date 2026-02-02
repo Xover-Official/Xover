@@ -30,7 +30,7 @@ type AIResponse struct {
 // AIClient is the interface all AI tier implementations must satisfy
 type AIClient interface {
 	// Analyze processes a request and returns a response
-	Analyze(request AIRequest) (*AIResponse, error)
+	Analyze(ctx context.Context, request AIRequest) (*AIResponse, error)
 
 	// GetEstimatedCost estimates cost before making the call
 	GetEstimatedCost(request AIRequest) float64
@@ -47,11 +47,11 @@ type AIClient interface {
 
 // AIClientFactory creates the appropriate AI client based on tier
 type AIClientFactory struct {
-	geminiFlashClient *GeminiFlashClient
-	geminiProClient   *GeminiProClient
-	claudeClient      *ClaudeClient
-	gpt5MiniClient    *GPT5MiniClient
-	devinClient       *DevinClient
+	geminiFlashClient AIClient
+	geminiProClient   AIClient
+	claudeClient      AIClient
+	gpt5MiniClient    AIClient
+	devinClient       AIClient
 }
 
 // NewAIClientFactory creates a new factory with all clients initialized
@@ -65,6 +65,22 @@ func NewAIClientFactory(config *Config) (*AIClientFactory, error) {
 	}
 
 	return factory, nil
+}
+
+// SetClient allows replacing a client for testing purposes
+func (f *AIClientFactory) SetClient(name string, client AIClient) {
+	switch name {
+	case "sentinel":
+		f.geminiFlashClient = client
+	case "strategist":
+		f.geminiProClient = client
+	case "arbiter":
+		f.claudeClient = client
+	case "reasoning":
+		f.gpt5MiniClient = client
+	case "oracle":
+		f.devinClient = client
+	}
 }
 
 // GetClientForRisk returns the appropriate AI client based on risk score

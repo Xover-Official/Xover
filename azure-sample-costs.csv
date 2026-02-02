@@ -1,0 +1,13 @@
+"ResourceType","ResourceName","Location","Date","Cost"
+"Virtual Machine","Standard_B1s","East US","2026-01-01",12.34
+"Storage Account","","East US","2026-01-01",8.76
+"Azure SQL Database","Basic","East US","2026-01-01",25.00
+"Virtual Machine","Standard_D2s_v3","West US 2","2026-01-01",175.50
+"Storage Account","","West US 2","2026-01-01",30.25
+"Azure SQL Database","S0","West US 2","2026-01-01",350.00
+"Virtual Machine","Standard_B1s","East US","2026-01-02",12.34
+"Storage Account","","East US","2026-01-02",8.76
+"Azure SQL Database","Basic","East US","2026-01-02",25.00
+"Virtual Machine","Standard_D2s_v3","West US 2","2026-01-02",175.50
+"Storage Account","","West US 2","2026-01-02",30.25
+"Azure SQL Database","S0","West US 2","2026-01-02",350.00

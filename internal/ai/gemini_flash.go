@@ -31,7 +31,7 @@ func NewGeminiFlashClient(apiKey string) *GeminiFlashClient {
 }
 
 // Analyze implements AIClient interface
-func (c *GeminiFlashClient) Analyze(request AIRequest) (*AIResponse, error) {
+func (c *GeminiFlashClient) Analyze(ctx context.Context, request AIRequest) (*AIResponse, error) {
 	startTime := time.Now()
 
 	// Build Gemini API request
@@ -56,7 +56,7 @@ func (c *GeminiFlashClient) Analyze(request AIRequest) (*AIResponse, error) {
 
 	// Make API call
 	url := fmt.Sprintf("%s?key=%s", c.endpoint, c.apiKey)
-	httpReq, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -138,6 +138,6 @@ func (c *GeminiFlashClient) HealthCheck(ctx context.Context) error {
 		Temperature: 0.1,
 	}
 
-	_, err := c.Analyze(testReq)
+	_, err := c.Analyze(ctx, testReq)
 	return err
 }

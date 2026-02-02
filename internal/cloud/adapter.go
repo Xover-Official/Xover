@@ -32,7 +32,8 @@ type CloudConfig struct {
 // It uses the canonical ResourceV2 model for all operations.
 type CloudAdapter interface {
 	FetchResources(ctx context.Context) ([]*ResourceV2, error)
-	ApplyOptimization(ctx context.Context, resource *ResourceV2, action string) (string, float64, error)
+	GetResource(ctx context.Context, id string) (*ResourceV2, error)
+	ApplyOptimization(ctx context.Context, resource *ResourceV2, action string) (float64, error)
 	GetSpotPrice(zone, instanceType string) (float64, error)
 	ListZones() ([]string, error)
 }

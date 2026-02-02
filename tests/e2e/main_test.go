@@ -7,7 +7,6 @@ import (
 
 	"github.com/project-atlas/atlas/internal/config"
 	"github.com/project-atlas/atlas/internal/engine"
-	// "github.com/project-atlas/atlas/internal/cloud/mock"
 )
 
 // TestFullOptimizationCycle simulates a complete optimization loop:
@@ -18,7 +17,9 @@ func TestFullOptimizationCycle(t *testing.T) {
 	// 1. Setup Configuration
 	cfg := &config.Config{
 		// Use mock cloud provider
-		Cloud: config.CloudConfig{Providers: []string{"mock"}},
+		Cloud: config.CloudConfig{
+			Provider: "mock",
+		},
 	}
 	t.Logf("Loaded Config: %+v", cfg)
 
