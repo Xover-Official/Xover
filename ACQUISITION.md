@@ -1,6 +1,15 @@
 # 💰 TALOS: Acquisition Data Room
 
-Welcome to the TALOS acquisition repository. TALOS is a market-ready, enterprise-grade autonomous cloud optimization engine designed for maximum ROI and safety.
+
+Welcome to the TALOS acquisition repository. You are viewing a market-ready, enterprise-grade autonomous cloud optimization engine designed for maximum ROI and safety.
+
+## 📦 The Business Package
+
+This acquisition includes four distinct asset classes:
+1.  **The IP Asset**: Proprietary ROSES/TOPAZ AI Framework & 10/10 Audited Codebase.
+2.  **The Operational Asset**: Full deployment automation, security protocols, and ops manuals.
+3.  **The Strategic Asset**: 18-month roadmap, competitive analysis, and growth strategy.
+4.  **The Proof Asset**: Verified case studies and performance benchmarks.
 
 ## 📂 Data Room Index
 

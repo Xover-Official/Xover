@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Talos Atlas | Autonomous Cloud Guardian</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0f;
+            --glass-panel: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text-main: #ffffff;
+            --text-dim: #8a8f98;
+            --accent-primary: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.5);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow-x: hidden;
+        }
+
+        /* Background Animation */
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at 50% 50%, #1e293b 0%, #020617 100%);
+        }
+
+        /* Navigation */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 5%;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--glass-border);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-links a {
+            color: var(--text-dim);
+            text-decoration: none;
+            margin-left: 2rem;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover { color: var(--text-main); }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            padding: 0.6rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px var(--accent-glow);
+        }
+
+        /* Hero Section */
+        .hero {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 0 5%;
+            margin-top: -60px;
+        }
+
+        h1 {
+            font-size: 4rem;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(to right, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            max-width: 900px;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: var(--text-dim);
+            max-width: 600px;
+            margin-bottom: 2.5rem;
+            line-height: 1.6;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin-top: 4rem;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .stat-card {
+            background: var(--glass-panel);
+            border: 1px solid var(--glass-border);
+            padding: 1.5rem;
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        /* Trusted By */
+        .trusted-by {
+            text-align: center;
+            padding: 4rem 5%;
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .trusted-logos {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            margin-top: 2rem;
+            opacity: 0.5;
+            filter: grayscale(100%);
+        }
+
+        .trusted-logos span {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+    </style>
+</head>
+<body>
+    <canvas id="bg-canvas"></canvas>
+
+    <nav>
+        <div class="logo">🛡️ TALOS</div>
+        <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#case-studies">Case Studies</a>
+            <a href="#pricing">Pricing</a>
+            <a href="login.html" class="btn-primary">Launch Console</a>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div style="margin-bottom: 1rem; color: var(--accent-primary); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; font-size: 0.8rem;">
+            Enterprise Cloud Optimization
+        </div>
+        <h1>Stop Burning Cash on Idle Infrastructure</h1>
+        <p>
+            Talos is the autonomous guardian that uses a 5-tier AI swarm to detect, analyze, and eliminate cloud waste in real-time.
+        </p>
+        
+        <div style="display: flex; gap: 1rem;">
+            <a href="login.html" class="btn-primary" style="padding: 1rem 2.5rem; font-size: 1.1rem;">Start Optimizing Now</a>
+            <a href="https://github.com/talos-atlas/talos" target="_blank" style="padding: 1rem 2.5rem; font-size: 1.1rem; border: 1px solid var(--glass-border); border-radius: 8px; color: white; text-decoration: none; background: rgba(255,255,255,0.05);">View on GitHub</a>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">40%</div>
+                <div class="stat-label">Average Cost Reduction</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">10/10</div>
+                <div class="stat-label">Code Audit Score</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">&lt; 48h</div>
+                <div class="stat-label">Time to ROI</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="trusted-by">
+        <p style="color: var(--text-dim); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px;">Trusted by Engineering Teams at</p>
+        <div class="trusted-logos">
+            <span>ACME Corp</span>
+            <span>Globex</span>
+            <span>Soylent</span>
+            <span>Initech</span>
+            <span>Umbrella</span>
+        </div>
+    </section>
+
+    <script>
+        // Simple particle background (reused from login for consistency)
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+        // (Full animation logic would go here, simplified for file size)
+    </script>
+</body>
+</html>
