@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/project-atlas/atlas/internal/logger"
-	"github.com/project-atlas/atlas/pkg/models"
+	"github.com/Xover-Official/Xover/internal/logger"
+	"github.com/Xover-Official/Xover/pkg/models"
 	"github.com/google/uuid"
 )
 

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/ai"
-	"github.com/project-atlas/atlas/internal/cloud"
-	"github.com/project-atlas/atlas/internal/database"
+	"github.com/Xover-Official/Xover/internal/ai"
+	"github.com/Xover-Official/Xover/internal/cloud"
+	"github.com/Xover-Official/Xover/internal/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.opentelemetry.io/otel/trace"

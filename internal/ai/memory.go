@@ -34,10 +34,6 @@ func (m *ProjectMemory) AddEntry(ctx context.Context, entry MemoryEntry) error {
 		return fmt.Errorf("cannot add memory entry: resource ID is empty")
 	}
 
-	if entry.ResourceID == "" {
-		return fmt.Errorf("cannot add memory entry: resource ID is empty")
-	}
-
 	data, err := json.Marshal(entry)
 	if err != nil {
 		return fmt.Errorf("failed to marshal memory entry: %w", err)

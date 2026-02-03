@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/cloud"
-	"github.com/project-atlas/atlas/internal/risk"
+	"github.com/Xover-Official/Xover/internal/cloud"
+	"github.com/Xover-Official/Xover/internal/risk"
 )
 
 type Reporter struct {

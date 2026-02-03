@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/project-atlas/atlas/internal/cloud"
+	"github.com/Xover-Official/Xover/internal/cloud"
 )
 
 type ParallelExecutor struct {

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/ai"
-	"github.com/project-atlas/atlas/internal/cloud"
+	"github.com/Xover-Official/Xover/internal/ai"
+	"github.com/Xover-Official/Xover/internal/cloud"
 )
 
 // AITestCase represents a test case for AI behavior

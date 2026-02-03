@@ -13,10 +13,10 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/mux"
-	"github.com/project-atlas/atlas/internal/ai"
-	"github.com/project-atlas/atlas/internal/analytics"
-	"github.com/project-atlas/atlas/internal/config"
-	"github.com/project-atlas/atlas/internal/persistence"
+	"github.com/Xover-Official/Xover/internal/ai"
+	"github.com/Xover-Official/Xover/internal/analytics"
+	"github.com/Xover-Official/Xover/internal/config"
+	"github.com/Xover-Official/Xover/internal/persistence"
 )
 
 // Task represents a distributed work item

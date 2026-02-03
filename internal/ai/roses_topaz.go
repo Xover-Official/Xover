@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/cloud"
-	"github.com/project-atlas/atlas/internal/telemetry"
+	"github.com/Xover-Official/Xover/internal/cloud"
+	"github.com/Xover-Official/Xover/internal/telemetry"
 	"go.opentelemetry.io/otel/attribute"
 	"sync"
 )

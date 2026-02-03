@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/health"
+	"github.com/Xover-Official/Xover/internal/health"
 )
 
 // HealthHandler serves health check endpoints

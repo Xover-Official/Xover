@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/project-atlas/atlas/internal/logger"
+	"github.com/Xover-Official/Xover/internal/logger"
 )
 
 type ScoreResult struct {

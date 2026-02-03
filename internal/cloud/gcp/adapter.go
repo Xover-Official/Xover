@@ -6,7 +6,7 @@ import (
 	"time"
 
 	compute "cloud.google.com/go/compute/apiv1"
-	"github.com/project-atlas/atlas/internal/cloud"
+	"github.com/Xover-Official/Xover/internal/cloud"
 )
 
 // GCPAdapter implements CloudAdapter for Google Cloud Platform

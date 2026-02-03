@@ -7,9 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/analytics"
-	"github.com/project-atlas/atlas/internal/cloud"
-	"github.com/project-atlas/atlas/internal/logger"
+	"github.com/Xover-Official/Xover/internal/analytics"
+	"github.com/Xover-Official/Xover/internal/cloud"
 	"go.uber.org/zap"
 )
 
@@ -22,10 +21,6 @@ type TOPAZOrchestrator struct {
 
 // NewTOPAZOrchestrator creates a new orchestrator with ROSES/T.O.P.A.Z. capabilities and zap logger
 func NewTOPAZOrchestrator(config *Config, tracker *analytics.TokenTracker, l *zap.Logger) (*TOPAZOrchestrator, error) {
-	if l == nil {
-		l = logger.GetLogger()
-	}
-
 	// Create base orchestrator
 	baseOrchestrator, err := NewUnifiedOrchestrator(config, tracker, l)
 	if err != nil {
@@ -175,6 +170,7 @@ func (to *TOPAZOrchestrator) enhanceWithAIInsights(decision *TOPAZDecision, aiRe
 			}
 		}
 	} else {
+		to.logger.Warn("AI response was not valid JSON, using raw content for reasoning", zap.String("resource_id", decision.ResourceID))
 		// If not JSON, add as reasoning
 		decision.Reasoning = append(decision.Reasoning, fmt.Sprintf("AI Analysis: %s", aiResponse.Content))
 	}

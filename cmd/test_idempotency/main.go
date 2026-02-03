@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/project-atlas/atlas/internal/idempotency"
-	"github.com/project-atlas/atlas/internal/logger"
+	"github.com/Xover-Official/Xover/internal/idempotency"
+	"github.com/Xover-Official/Xover/internal/logger"
 )
 
 func main() {

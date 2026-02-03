@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/cloud"
-	"github.com/project-atlas/atlas/internal/monitoring"
+	"github.com/Xover-Official/Xover/internal/cloud"
+	"github.com/Xover-Official/Xover/internal/monitoring"
 )
 
 // PerformanceOptimizer optimizes application performance

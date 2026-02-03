@@ -1,14 +1,14 @@
-# 📰 Talos Press Kit
+📰 Xover Press Kit
 
 ## Product Overview
 
-**Name**: Talos
+**Name**: Xover
 **Tagline**: The Autonomous Cloud Guardian
-**Website**: <https://talos.dev>
+**Website**: <https://xover.dev>
 **Launch Date**: Feb 1, 2026
 
 **One-Sentence Pitch**:
-Talos is an autonomous AI platform that continuously monitors and optimizes your AWS, Azure, and GCP infrastructure to cut cloud costs by 40%+, no manual work required.
+Xover is an autonomous AI platform that continuously monitors and optimizes your AWS, Azure, and GCP infrastructure to cut cloud costs by 40%+, no manual work required.
 
 ---
 
@@ -18,9 +18,9 @@ Talos is an autonomous AI platform that continuously monitors and optimizes your
 
 *(Links to high-res transparent PNGs would go here)*
 
-- `talos-logo-dark.png`
-- `talos-logo-light.png`
-- `talos-icon.png`
+- `xover-logo-dark.png`
+- `xover-logo-light.png`
+- `xover-icon.png`
 
 ### Screenshots
 
@@ -42,13 +42,13 @@ Talos is an autonomous AI platform that continuously monitors and optimizes your
 > "Cloud complexity has outpaced human ability to manage it. We're asking engineers to be experts in Kubernetes, cost optimization, *and* twenty different AWS services. It's too much. The future is autonomous."
 
 **Quote 2 (The Solution)**:
-> "Talos isn't just a dashboard; it's an active participant. It fixes problems before you even get the alert. It's like having a senior SRE who never sleeps and works for pennies an hour."
+> "Xover isn't just a dashboard; it's an active participant. It fixes problems before you even get the alert. It's like having a senior SRE who never sleeps and works for pennies an hour."
 
 ---
 
 ## 🔑 Key Differentiators
 
-1. **Autonomous Action**: Unlike cost dashboards that just *show* you problems, Talos *fixes* them (with your permission settings).
+1. **Autonomous Action**: Unlike cost dashboards that just *show* you problems, Xover *fixes* them (with your permission settings).
 2. **5-Tier AI Swarm**: Different models for different risks. Fast/cheap models for monitoring, powerful/reasoning models for complex changes.
 3. **Risk-First Design**: Built with a "do no harm" philosophy. Simulation modes and ROI calculators ensure every action is net-positive.
 
@@ -65,6 +65,6 @@ Talos is an autonomous AI platform that continuously monitors and optimizes your
 
 ## 📞 Contact
 
-**Press Inquiries**: <press@talos.dev>
-**Twitter**: @TalosGuardian
-**Discord**: discord.gg/talos
+**Press Inquiries**: <press@xover.dev>
+**Twitter**: @XoverGuardian
+**Discord**: discord.gg/xover

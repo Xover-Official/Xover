@@ -1,10 +1,10 @@
-# TALOS: Autonomous Cloud Infrastructure Guardian
+# XOVER: Autonomous Cloud Infrastructure Guardian
 
 > **Acquiring a 10/10 Validated Cloud AI Business**
 
-[![Enterprise Grade](https://img.shields.io/badge/Enterprise-Ready-blue?style=for-the-badge&logo=appveyor)](https://github.com/talos-atlas/talos)
-[![SOC2 Compliant](https://img.shields.io/badge/Compliance-SOC2_Type_II-green?style=for-the-badge)](https://github.com/talos-atlas/talos)
-[![AI Powered](https://img.shields.io/badge/AI-Tiered_Swarm-purple?style=for-the-badge)](https://github.com/talos-atlas/talos)
+[![Enterprise Grade](https://img.shields.io/badge/Enterprise-Ready-blue?style=for-the-badge&logo=appveyor)](https://github.com/xover-cloud/xover)
+[![SOC2 Compliant](https://img.shields.io/badge/Compliance-SOC2_Type_II-green?style=for-the-badge)](https://github.com/xover-cloud/xover)
+[![AI Powered](https://img.shields.io/badge/AI-Tiered_Swarm-purple?style=for-the-badge)](https://github.com/xover-cloud/xover)
 [![Audit Score](https://img.shields.io/badge/Audit-10%2F10_Perfect-gold?style=for-the-badge)](./AUDIT_SUMMARY.md)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
@@ -14,19 +14,19 @@
 
 ## 🚀 Executive Summary
 
-**Talos** is not just a monitoring tool; it is an **autonomous economic engine** for enterprise cloud estates. Built on a military-grade OODA (Observe, Orient, Decide, Act) loop, Talos employs a tiered AI swarm to relentlessly hunt inefficiency, enforce governance, and optimize spend without human intervention.
+**Xover** is not just a monitoring tool; it is an **autonomous economic engine** for enterprise cloud estates. Built on a military-grade OODA (Observe, Orient, Decide, Act) loop, Xover employs a tiered AI swarm to relentlessly hunt inefficiency, enforce governance, and optimize spend without human intervention.
 
-While your engineering team focuses on shipping features, Talos focuses on protecting your runway.
+While your engineering team focuses on shipping features, Xover focuses on protecting your runway.
 
-[**📄 View Public Case Study: Project Titan**](./TITAN_CASE_STUDY_PUBLIC.md) — *See how Talos reduced a Series B startup's burn rate by 40% in 30 days.*
+[**📄 View Public Case Study: Project Titan**](./TITAN_CASE_STUDY_PUBLIC.md) — *See how Xover reduced a Series B startup's burn rate by 40% in 30 days.*
 [**🛡️ View Independent Audit: 10/10 Score**](./AUDIT_SUMMARY.md) — *Verified Enterprise-Grade Architecture.*
 
 ---
 
-## 💎 The Talos Advantage
+## 💎 The Xover Advantage
 
 ### 1. The 5-Tier AI Swarm
-Talos doesn't rely on static rules. It uses a sophisticated, multi-model AI architecture to analyze context, risk, and opportunity.
+Xover doesn't rely on static rules. It uses a sophisticated, multi-model AI architecture to analyze context, risk, and opportunity.
 
 | Tier | Role | Intelligence Model | Function |
 | :--- | :--- | :--- | :--- |
@@ -37,7 +37,7 @@ Talos doesn't rely on static rules. It uses a sophisticated, multi-model AI arch
 | **Oracle** | Architect | Devin | Autonomous code refactoring & infrastructure healing. |
 
 ### 2. Autonomous OODA Loop
-Talos operates on a continuous decision cycle, ensuring your infrastructure adapts faster than your costs can grow.
+Xover operates on a continuous decision cycle, ensuring your infrastructure adapts faster than your costs can grow.
 1.  **Observe:** Ingests telemetry from AWS, Azure, and GCP.
 2.  **Orient:** Contextualizes data against business goals and "Anti-Fragile" rules.
 3.  **Decide:** The AI Swarm debates and scores potential actions based on ROI and Risk.
@@ -52,23 +52,23 @@ Talos operates on a continuous decision cycle, ensuring your infrastructure adap
 
 ## 📊 Proven Impact
 
-In a recent deployment for a high-growth fintech client ("Project Titan"), Talos achieved:
+In a recent deployment for a high-growth fintech client ("Project Titan"), Xover achieved:
 
 *   **$240k** Annualized Savings identified in Week 1.
 *   **35%** Reduction in idle resource consumption.
 *   **100%** Elimination of unattached storage volumes.
 
-> *"Talos didn't just save us money; it gave us back our engineering velocity. We stopped fighting fires and started building again."* — CTO, Anonymous Fintech
+> *"Xover didn't just save us money; it gave us back our engineering velocity. We stopped fighting fires and started building again."* — CTO, Anonymous Fintech
 
 ---
 
 ## 🛠️ Technical Architecture
 
-Talos is written in **Go** for performance and concurrency, designed to run as a distributed system within your VPC.
+Xover is written in **Go** for performance and concurrency, designed to run as a distributed system within your VPC.
 
 ```mermaid
 graph LR
-    A[Cloud Estate] -->|Telemetry| B(Talos Sentinel);
+    A[Cloud Estate] -->|Telemetry| B(Xover Sentinel);
     B -->|Anomalies| C{AI Swarm};
     C -->|Low Risk| D[Auto-Remediation];
     C -->|High Risk| E[Human Approval];

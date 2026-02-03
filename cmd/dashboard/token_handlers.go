@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
+	"strconv"
 	"time"
+
+	"github.com/Xover-Official/Xover/internal/cloud"
 )
 
 // Additional handlers that aren't in main.go
@@ -19,61 +21,28 @@ func (s *server) handleTokenStats(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	stats := s.tracker.GetStats()
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":           "success",
-		"token_statistics": stats,
-		"timestamp":        time.Now(),
-	})
+	resp := TokenStatsResponse{
+		Status:          "success",
+		TokenStatistics: stats,
+		Timestamp:       time.Now(),
+	}
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (s *server) handleResourceMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	if s.adapter == nil {
-		respondWithError(w, http.StatusInternalServerError, "Cloud adapter not initialized")
+	s.metricsCache.RLock()
+	metrics := s.metricsCache.metrics
+	s.metricsCache.RUnlock()
+
+	if metrics == nil {
+		respondWithError(w, http.StatusServiceUnavailable, "Metrics cache is not populated yet. Please try again in a moment.")
 		return
 	}
 
-	// Fetch resources and calculate metrics
-	resources, err := s.adapter.FetchResources(r.Context())
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to fetch resources: %v", err))
-		return
-	}
-
-	// Calculate metrics
-	totalResources := len(resources)
-	totalCost := 0.0
-	underutilizedCount := 0
-	cpuUsage := 0.0
-	memoryUsage := 0.0
-
-	for _, res := range resources {
-		totalCost += res.CostPerMonth
-		cpuUsage += res.CPUUsage
-		memoryUsage += res.MemoryUsage
-
-		if res.CPUUsage < 30 && res.MemoryUsage < 40 {
-			underutilizedCount++
-		}
-	}
-
-	avgCPU := cpuUsage / float64(totalResources)
-	avgMemory := memoryUsage / float64(totalResources)
-	underutilizedPercent := float64(underutilizedCount) / float64(totalResources) * 100
-
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":                    "success",
-		"total_resources":           totalResources,
-		"total_monthly_cost":        totalCost,
-		"average_cpu_usage":         avgCPU,
-		"average_memory_usage":      avgMemory,
-		"underutilized_count":       underutilizedCount,
-		"underutilized_percentage":  underutilizedPercent,
-		"potential_monthly_savings": totalCost * (underutilizedPercent / 100),
-		"timestamp":                 time.Now(),
-	})
+	json.NewEncoder(w).Encode(metrics)
 }
 
 func (s *server) handleOptimizationSuggestions(w http.ResponseWriter, r *http.Request) {
@@ -81,85 +50,85 @@ func (s *server) handleOptimizationSuggestions(w http.ResponseWriter, r *http.Re
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	if s.adapter == nil {
-		respondWithError(w, http.StatusInternalServerError, "Cloud adapter not initialized")
+		respondWithError(w, http.StatusInternalServerError, "System not initialized")
 		return
 	}
 
-	// Get query parameters
+	s.suggestionsCache.RLock()
+	allSuggestions := s.suggestionsCache.suggestions
+	s.suggestionsCache.RUnlock()
+
+	if allSuggestions == nil {
+		respondWithError(w, http.StatusServiceUnavailable, "Suggestions cache is not populated yet. Please try again in a moment.")
+		return
+	}
+
+	// Filter cached suggestions based on query parameters
 	resourceType := r.URL.Query().Get("type")
 	minSavings := r.URL.Query().Get("min_savings")
 
-	// Fetch resources
-	resources, err := s.adapter.FetchResources(r.Context())
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to fetch resources: %v", err))
-		return
-	}
-
-	suggestions := make([]map[string]interface{}, 0)
-
-	for _, res := range resources {
-		// Skip if resource type filter is set and doesn't match
-		if resourceType != "" && res.Type != resourceType {
+	filteredSuggestions := make([]OptimizationSuggestion, 0)
+	for _, suggestion := range allSuggestions.Suggestions {
+		if resourceType != "" && suggestion.ResourceType != resourceType {
 			continue
 		}
 
-		// Generate optimization suggestions based on utilization
-		var suggestion string
-		var estimatedSavings float64
-		var priority string
-
-		if res.CPUUsage < 20 && res.MemoryUsage < 30 {
-			suggestion = "resize_down"
-			estimatedSavings = res.CostPerMonth * 0.5 // 50% savings
-			priority = "high"
-		} else if res.CPUUsage < 40 && res.MemoryUsage < 50 {
-			suggestion = "rightsize"
-			estimatedSavings = res.CostPerMonth * 0.25 // 25% savings
-			priority = "medium"
-		} else if res.State == "stopped" {
-			suggestion = "terminate_if_unused"
-			estimatedSavings = res.CostPerMonth
-			priority = "high"
-		}
-
-		// Apply minimum savings filter
 		if minSavings != "" {
-			if minVal, err := parseFloat(minSavings); err == nil && estimatedSavings < minVal {
+			if minVal, err := parseFloat(minSavings); err == nil && suggestion.EstimatedSavings < minVal {
 				continue
 			}
 		}
-
-		if suggestion != "" {
-			suggestions = append(suggestions, map[string]interface{}{
-				"resource_id":       res.ID,
-				"resource_type":     res.Type,
-				"provider":          res.Provider,
-				"region":            res.Region,
-				"current_cost":      res.CostPerMonth,
-				"cpu_usage":         res.CPUUsage,
-				"memory_usage":      res.MemoryUsage,
-				"suggestion":        suggestion,
-				"estimated_savings": estimatedSavings,
-				"priority":          priority,
-				"reason":            generateOptimizationReason(res.CPUUsage, res.MemoryUsage, res.State),
-			})
-		}
+		filteredSuggestions = append(filteredSuggestions, suggestion)
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":                  "success",
-		"suggestions":             suggestions,
-		"total_suggestions":       len(suggestions),
-		"total_potential_savings": calculateTotalSavings(suggestions),
-		"timestamp":               time.Now(),
-	})
+	// Re-calculate total savings for the filtered list
+	finalResponse := OptimizationSuggestionsResponse{
+		Status:                "success",
+		Suggestions:           filteredSuggestions,
+		TotalSuggestions:      len(filteredSuggestions),
+		TotalPotentialSavings: calculateTotalSavings(filteredSuggestions),
+		Timestamp:             time.Now(),
+	}
+
+	json.NewEncoder(w).Encode(finalResponse)
 }
 
 // Helper functions
 func respondWithError(w http.ResponseWriter, code int, message string) {
 	w.Header().Set("Content-Type", "application/json")
-	http.Error(w, fmt.Sprintf(`{"error": "%s"}`, message), code)
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(map[string]string{"error": message})
+}
+
+// generateSuggestionForResource is a helper for the caching worker.
+func generateSuggestionForResource(res *cloud.ResourceV2) *OptimizationSuggestion {
+	var suggestion string
+	var estimatedSavings float64
+	var priority string
+
+	if res.CPUUsage < 20 && res.MemoryUsage < 30 {
+		suggestion = "resize_down"
+		estimatedSavings = res.CostPerMonth * 0.5 // 50% savings
+		priority = "high"
+	} else if res.CPUUsage < 40 && res.MemoryUsage < 50 {
+		suggestion = "rightsize"
+		estimatedSavings = res.CostPerMonth * 0.25 // 25% savings
+		priority = "medium"
+	} else if res.State == "stopped" {
+		suggestion = "terminate_if_unused"
+		estimatedSavings = res.CostPerMonth
+		priority = "high"
+	}
+
+	if suggestion != "" {
+		return &OptimizationSuggestion{
+			ResourceID: res.ID, ResourceType: res.Type, Provider: res.Provider,
+			Region: res.Region, CurrentCost: res.CostPerMonth, CPUUsage: res.CPUUsage,
+			MemoryUsage: res.MemoryUsage, Suggestion: suggestion, EstimatedSavings: estimatedSavings,
+			Priority: priority, Reason: generateOptimizationReason(res.CPUUsage, res.MemoryUsage, res.State),
+		}
+	}
+	return nil
 }
 
 func generateOptimizationReason(cpuUsage, memoryUsage float64, state string) string {
@@ -175,18 +144,14 @@ func generateOptimizationReason(cpuUsage, memoryUsage float64, state string) str
 	return "Resource appears to be appropriately sized"
 }
 
-func calculateTotalSavings(suggestions []map[string]interface{}) float64 {
+func calculateTotalSavings(suggestions []OptimizationSuggestion) float64 {
 	total := 0.0
 	for _, suggestion := range suggestions {
-		if savings, ok := suggestion["estimated_savings"].(float64); ok {
-			total += savings
-		}
+		total += suggestion.EstimatedSavings
 	}
 	return total
 }
 
 func parseFloat(s string) (float64, error) {
-	var result float64
-	_, err := fmt.Sscanf(s, "%f", &result)
-	return result, err
+	return strconv.ParseFloat(s, 64)
 }

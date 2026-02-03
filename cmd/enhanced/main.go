@@ -11,11 +11,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/config"
-	"github.com/project-atlas/atlas/internal/deployment"
-	"github.com/project-atlas/atlas/internal/monitoring"
-	"github.com/project-atlas/atlas/internal/performance"
-	"github.com/project-atlas/atlas/internal/security"
+	"github.com/Xover-Official/Xover/internal/config"
+	"github.com/Xover-Official/Xover/internal/deployment"
+	"github.com/Xover-Official/Xover/internal/monitoring"
+	"github.com/Xover-Official/Xover/internal/performance"
+	"github.com/Xover-Official/Xover/internal/security"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 )

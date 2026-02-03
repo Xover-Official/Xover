@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/cloud"
-	"github.com/project-atlas/atlas/internal/cloud/aws"
+	"github.com/Xover-Official/Xover/internal/cloud"
+	"github.com/Xover-Official/Xover/internal/cloud/aws"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

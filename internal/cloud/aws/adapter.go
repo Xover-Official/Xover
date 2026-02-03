@@ -16,7 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"go.uber.org/multierr"
 
-	"github.com/project-atlas/atlas/internal/cloud"
+	"github.com/Xover-Official/Xover/internal/cloud"
 )
 
 // mockInstancePricing provides a rough cost estimate per month for instance types.

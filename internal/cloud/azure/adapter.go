@@ -6,7 +6,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute"
-	"github.com/project-atlas/atlas/internal/cloud"
+	"github.com/Xover-Official/Xover/internal/cloud"
 )
 
 // AzureAdapter implements CloudAdapter for Azure

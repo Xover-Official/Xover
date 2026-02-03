@@ -6,8 +6,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/cloud"
-	"github.com/project-atlas/atlas/internal/risk"
+	"github.com/Xover-Official/Xover/internal/cloud"
+	"github.com/Xover-Official/Xover/internal/risk"
 )
 
 func main() {

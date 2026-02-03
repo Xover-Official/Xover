@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/project-atlas/atlas/pkg/models"
+	"github.com/Xover-Official/Xover/pkg/models"
 	_ "modernc.org/sqlite"
 )
 

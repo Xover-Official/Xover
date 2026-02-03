@@ -56,7 +56,7 @@ func (c *OpenRouterClient) Analyze(ctx context.Context, request AIRequest, model
 
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
-	httpReq.Header.Set("HTTP-Referer", "https://talos.dev")
+	httpReq.Header.Set("HTTP-Referer", "https://github.com/Xover-Official/Xover")
 	httpReq.Header.Set("X-Title", "Talos Cloud Guardian")
 
 	resp, err := c.httpClient.Do(httpReq)

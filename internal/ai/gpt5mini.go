@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -130,17 +131,68 @@ Think step-by-step and provide:
 
 // extractReasoning extracts reasoning from GPT response
 func (c *GPT5MiniClient) extractReasoning(content string) string {
-	// Simple extraction - in production, use more sophisticated parsing
-	if len(content) > 200 {
-		return content[100:200] + "..."
+	// Look for the structured output requested in the prompt
+	marker := "2. Detailed reasoning"
+	idx := strings.Index(content, marker)
+	if idx == -1 {
+		// Fallback: return summary if structure is missing
+		if len(content) > 200 {
+			return content[:200] + "..."
+		}
+		return content
 	}
-	return content
+
+	// Extract text between "2. Detailed reasoning" and "3."
+	start := idx + len(marker)
+	rest := content[start:]
+	
+	endIdx := strings.Index(rest, "3.")
+	if endIdx != -1 {
+		return strings.TrimSpace(rest[:endIdx])
+	}
+	
+	return strings.TrimSpace(rest)
 }
 
 // extractAlternatives extracts alternative options from GPT response
 func (c *GPT5MiniClient) extractAlternatives(content string) []string {
-	// Placeholder - in production, parse structured output
-	return []string{"Option A", "Option B"}
+	marker := "3. Alternative options you considered"
+	endMarker := "4. Confidence level"
+
+	startIndex := strings.Index(content, marker)
+	if startIndex == -1 {
+		return nil
+	}
+
+	// Find the text block for alternatives
+	alternativesBlock := content[startIndex+len(marker):]
+	endIndex := strings.Index(alternativesBlock, endMarker)
+	if endIndex != -1 {
+		alternativesBlock = alternativesBlock[:endIndex]
+	}
+
+	// Split into lines and clean up
+	lines := strings.Split(strings.TrimSpace(alternativesBlock), "\n")
+	var alternatives []string
+	for _, line := range lines {
+		trimmedLine := strings.TrimSpace(line)
+		if trimmedLine != "" {
+			// Remove potential list markers like "- ", "* ", "1. "
+			if len(trimmedLine) > 2 && (trimmedLine[0] == '-' || trimmedLine[0] == '*') && trimmedLine[1] == ' ' {
+				alternatives = append(alternatives, trimmedLine[2:])
+			} else if len(trimmedLine) > 3 && trimmedLine[1] == '.' && trimmedLine[2] == ' ' {
+				alternatives = append(alternatives, trimmedLine[3:])
+			} else {
+				alternatives = append(alternatives, trimmedLine)
+			}
+		}
+	}
+
+	if len(alternatives) == 0 {
+		return nil
+	}
+
+	return alternatives
 }
 
 func (c *GPT5MiniClient) GetEstimatedCost(request AIRequest) float64 {

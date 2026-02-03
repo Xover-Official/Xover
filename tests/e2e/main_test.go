@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/config"
-	"github.com/project-atlas/atlas/internal/engine"
+	"github.com/Xover-Official/Xover/internal/config"
+	"github.com/Xover-Official/Xover/internal/engine"
 )
 
 // TestFullOptimizationCycle simulates a complete optimization loop:

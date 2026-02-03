@@ -7,42 +7,38 @@ import (
 	"strings"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/auth"
+	"github.com/Xover-Official/Xover/internal/auth"
 	"go.uber.org/zap"
 )
 
+type contextKey string
+
+// userContextKey is a type-safe key for storing user claims in the request context.
+const userContextKey = contextKey("user")
+
 func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	providerName := strings.TrimPrefix(r.URL.Path, "/auth/login/")
-	var provider auth.SSOProvider
-	switch providerName {
-	case "google":
-		provider = auth.NewGoogleWorkspaceProvider(s.config.SSO.Google.ClientID, s.config.SSO.Google.ClientSecret)
-	case "okta":
-		provider = auth.NewOktaProvider(s.config.SSO.Okta.Domain, s.config.SSO.Okta.ClientID, s.config.SSO.Okta.ClientSecret)
-	case "azure":
-		provider = auth.NewAzureADProvider(s.config.SSO.Azure.TenantID, s.config.SSO.Azure.ClientID, s.config.SSO.Azure.ClientSecret)
-	default:
-		respondWithError(w, http.StatusBadRequest, "unknown provider")
+	provider, err := s.getSSOProvider(providerName)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	redirectURI := fmt.Sprintf("http://%s/auth/callback/%s", r.Host, providerName)
+	// Make redirect URI scheme-aware for production environments (e.g., behind HTTPS proxy)
+	scheme := "http"
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	redirectURI := fmt.Sprintf("%s://%s/auth/callback/%s", scheme, r.Host, providerName)
 	authURL := provider.GetAuthURL(redirectURI)
 	http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
 }
 
 func (s *server) handleCallback(w http.ResponseWriter, r *http.Request) {
 	providerName := strings.TrimPrefix(r.URL.Path, "/auth/callback/")
-	var provider auth.SSOProvider
-	switch providerName {
-	case "google":
-		provider = auth.NewGoogleWorkspaceProvider(s.config.SSO.Google.ClientID, s.config.SSO.Google.ClientSecret)
-	case "okta":
-		provider = auth.NewOktaProvider(s.config.SSO.Okta.Domain, s.config.SSO.Okta.ClientID, s.config.SSO.Okta.ClientSecret)
-	case "azure":
-		provider = auth.NewAzureADProvider(s.config.SSO.Azure.TenantID, s.config.SSO.Azure.ClientID, s.config.SSO.Azure.ClientSecret)
-	default:
-		respondWithError(w, http.StatusBadRequest, "unknown provider")
+	provider, err := s.getSSOProvider(providerName)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -54,17 +50,14 @@ func (s *server) handleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// In a real application, you would look up the user in your database
-	// and assign roles based on the ssoUser.Groups or other attributes.
-	// For this example, we'll create a new user with a default role.
-	user := auth.User{
-		ID:             ssoUser.ID,
-		Email:          ssoUser.Email,
-		OrganizationID: "org-123",       // Example org
-		Role:           auth.RoleViewer, // Default role
+	user, err := s.resolveUserFromSSO(ssoUser)
+	if err != nil {
+		s.logger.Error("failed to resolve user from sso", zap.Error(err))
+		respondWithError(w, http.StatusInternalServerError, "failed to process user login")
+		return
 	}
 
-	token, err := s.jwtManager.Generate(user)
+	token, err := s.jwtManager.Generate(*user)
 	if err != nil {
 		s.logger.Error("failed to generate jwt", zap.Error(err))
 		respondWithError(w, http.StatusInternalServerError, "failed to generate token")
@@ -75,7 +68,7 @@ func (s *server) handleCallback(w http.ResponseWriter, r *http.Request) {
 		Name:     "atlas_token",
 		Value:    token,
 		Path:     "/",
-		Expires:  time.Now().Add(24 * time.Hour), // Use 24 hours as default
+		Expires:  time.Now().Add(s.config.JWT.TokenDuration), // Use configured duration
 		HttpOnly: true,
 		Secure:   r.TLS != nil,
 	})
@@ -98,11 +91,7 @@ func (s *server) handleLogout(w http.ResponseWriter, r *http.Request) {
 func (s *server) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("atlas_token")
-		if err != nil {
-			if r.URL.Path == "/login" || strings.HasPrefix(r.URL.Path, "/auth/") {
-				next.ServeHTTP(w, r)
-				return
-			}
+		if err != nil { // If cookie is not set, redirect to login.
 			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}
@@ -113,14 +102,14 @@ func (s *server) authMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), "user", claims)
+		ctx := context.WithValue(r.Context(), userContextKey, claims)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
 func (s *server) requirePermission(permission auth.Permission, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userClaims, ok := r.Context().Value("user").(*auth.Claims)
+		userClaims, ok := r.Context().Value(userContextKey).(*auth.Claims)
 		if !ok {
 			respondWithError(w, http.StatusUnauthorized, "no user in context")
 			return
@@ -133,4 +122,38 @@ func (s *server) requirePermission(permission auth.Permission, next http.Handler
 
 		next.ServeHTTP(w, r)
 	}
+}
+
+// getSSOProvider is a helper to instantiate an SSO provider by name.
+func (s *server) getSSOProvider(name string) (auth.SSOProvider, error) {
+	switch name {
+	case "google":
+		return auth.NewGoogleWorkspaceProvider(s.config.SSO.Google.ClientID, s.config.SSO.Google.ClientSecret), nil
+	case "okta":
+		return auth.NewOktaProvider(s.config.SSO.Okta.Domain, s.config.SSO.Okta.ClientID, s.config.SSO.Okta.ClientSecret), nil
+	case "azure":
+		return auth.NewAzureADProvider(s.config.SSO.Azure.TenantID, s.config.SSO.Azure.ClientID, s.config.SSO.Azure.ClientSecret), nil
+	default:
+		return nil, fmt.Errorf("unknown provider: %s", name)
+	}
+}
+
+// resolveUserFromSSO handles the logic of finding or creating a user from SSO data.
+func (s *server) resolveUserFromSSO(ssoUser *auth.SSOUser) (*auth.User, error) {
+	// Use the UserStore to find or create the user.
+	// This decouples the handler from the database implementation.
+	user, err := s.userStore.Upsert(ssoUser)
+	if err != nil {
+		s.logger.Error("failed to upsert user from sso",
+			zap.String("user_email", ssoUser.Email),
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to process user login")
+	}
+
+	s.logger.Info("resolved user from sso",
+		zap.String("user_email", user.Email),
+		zap.String("user_id", user.ID),
+	)
+	return user, nil
 }

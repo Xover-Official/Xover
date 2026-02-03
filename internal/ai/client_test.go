@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/project-atlas/atlas/internal/cloud"
+	"github.com/Xover-Official/Xover/internal/cloud"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -23,7 +23,6 @@ func TestSwarmOrchestratorFallback(t *testing.T) {
 
 	factory, _ := NewAIClientFactory(config)
 
-	// FIX 1: Use slog instead of log
 	orchestrator := &UnifiedOrchestrator{
 		factory: factory,
 		logger:  testLogger(),
@@ -31,8 +30,6 @@ func TestSwarmOrchestratorFallback(t *testing.T) {
 
 	ctx := context.Background()
 
-	// FIX 2: Correct arguments for orchestrator.Analyze
-	// want (context.Context, prompt string, risk float64, resource *cloud.ResourceV2)
 	mockResource := &cloud.ResourceV2{
 		ID:   "test-instance",
 		Type: "ec2",

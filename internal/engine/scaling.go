@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/memory"
+	"github.com/Xover-Official/Xover/internal/memory"
 )
 
 // ScalingEngine handles proactive scaling based on predictions

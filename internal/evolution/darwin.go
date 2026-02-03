@@ -4,8 +4,8 @@ import (
 	"context"
 	"log"
 
-	"github.com/project-atlas/atlas/internal/guardian"
-	"github.com/project-atlas/atlas/internal/memory"
+	"github.com/Xover-Official/Xover/internal/guardian"
+	"github.com/Xover-Official/Xover/internal/memory"
 )
 
 // Evolver is the "Slow Helix" that improves the system over time

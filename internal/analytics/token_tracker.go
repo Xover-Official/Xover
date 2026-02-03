@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/logger"
+	"github.com/Xover-Official/Xover/internal/logger"
 	"go.uber.org/zap"
 )
 

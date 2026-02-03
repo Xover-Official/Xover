@@ -9,10 +9,10 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/project-atlas/atlas/internal/ai"
-	"github.com/project-atlas/atlas/internal/analytics"
-	"github.com/project-atlas/atlas/internal/cloud"
-	"github.com/project-atlas/atlas/internal/cloud/aws"
+	"github.com/Xover-Official/Xover/internal/ai"
+	"github.com/Xover-Official/Xover/internal/analytics"
+	"github.com/Xover-Official/Xover/internal/cloud"
+	"github.com/Xover-Official/Xover/internal/cloud/aws"
 )
 
 type PerformanceTestSuite struct {

@@ -2,8 +2,8 @@ package engine
 
 import (
 	"fmt"
-	"github.com/project-atlas/atlas/internal/cloud"
-	"github.com/project-atlas/atlas/internal/logger"
+	"github.com/Xover-Official/Xover/internal/cloud"
+	"github.com/Xover-Official/Xover/internal/logger"
 )
 
 // ActionPlan represents a proposed optimization action

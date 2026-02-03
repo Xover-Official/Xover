@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/project-atlas/atlas/internal/logger"
+	"github.com/Xover-Official/Xover/internal/logger"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )

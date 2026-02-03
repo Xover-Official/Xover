@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/errors"
+	"github.com/Xover-Official/Xover/internal/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )

@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/errors"
-	"github.com/project-atlas/atlas/internal/logger"
+	"github.com/Xover-Official/Xover/internal/errors"
+	"go.uber.org/zap"
 )
 
 const (
@@ -21,11 +21,14 @@ const (
 	ModelDevinOracle = "devin/oracle-v1"
 )
 
+// LegacyOpenRouterClient is a deprecated client.
+// New development should use the clients provided by AIClientFactory and the UnifiedOrchestrator.
 type LegacyOpenRouterClient struct {
 	APIKey   string
 	DevinKey string
 	Memory   *ProjectMemory
 	client   *http.Client
+	logger   *zap.Logger
 }
 
 type Message struct {
@@ -46,31 +49,33 @@ type ChatResponse struct {
 	} `json:"choices"`
 }
 
-func NewLegacyOpenRouterClient(apiKey string, mem *ProjectMemory) *LegacyOpenRouterClient {
+func NewLegacyOpenRouterClient(apiKey, devinKey string, mem *ProjectMemory, logger *zap.Logger) *LegacyOpenRouterClient {
 	return &LegacyOpenRouterClient{
 		APIKey:   apiKey,
-		DevinKey: "", // REMOVED: Should be passed via config or env var
+		DevinKey: devinKey,
 		Memory:   mem,
 		client:   &http.Client{Timeout: 60 * time.Second},
+		logger:   logger.Named("LegacyOpenRouter"),
 	}
 }
 
 func (c *LegacyOpenRouterClient) AnalyzeTiered(ctx context.Context, contextStr string, resourceID string, risk float64) (string, error) {
 	model := ModelGeminiFlash
+	logger := c.logger.With(zap.String("resource_id", resourceID), zap.Float64("risk_score", risk))
 
 	// Tier 4: The Oracle (Devin) - Only for extreme complexity
 	if risk > 9.0 {
 		model = ModelDevinOracle
-		logger.LogAction(logger.Auditor, "AI-Selection", "ORACLE", "CRITICAL COMPLEXITY: Engaging Devin Oracle for multi-dimensional analysis.")
+		logger.Info("CRITICAL COMPLEXITY: Engaging Devin Oracle for multi-dimensional analysis.", zap.String("actor", "Auditor"), zap.String("action", "AI-Selection"), zap.String("tier", "ORACLE"))
 		return c.AnalyzeWithDevin(ctx, contextStr, resourceID)
 	} else if risk > 7.0 {
 		model = ModelClaude45
-		logger.LogAction(logger.Auditor, "AI-Selection", "UPGRADE", "Critical risk detected. Engaging Claude 4.5 for Safety Audit.")
+		logger.Info("Critical risk detected. Engaging Claude 4.5 for Safety Audit.", zap.String("actor", "Auditor"), zap.String("action", "AI-Selection"), zap.String("tier", "UPGRADE"))
 	} else if risk > 4.0 {
 		model = ModelGeminiPro
-		logger.LogAction(logger.Architect, "AI-Selection", "UPGRADE", "Moderate risk. Engaging Gemini Pro for Deep Analysis.")
+		logger.Info("Moderate risk. Engaging Gemini Pro for Deep Analysis.", zap.String("actor", "Architect"), zap.String("action", "AI-Selection"), zap.String("tier", "UPGRADE"))
 	} else {
-		logger.LogAction(logger.Architect, "AI-Selection", "NOMINAL", "Engaging Gemini Flash for pattern observation.")
+		logger.Info("Engaging Gemini Flash for pattern observation.", zap.String("actor", "Architect"), zap.String("action", "AI-Selection"), zap.String("tier", "NOMINAL"))
 	}
 
 	return c.AnalyzeWithModel(ctx, contextStr, resourceID, model)
@@ -122,7 +127,7 @@ func (c *LegacyOpenRouterClient) AnalyzeWithDevin(ctx context.Context, contextSt
 	start := time.Now()
 	resp, err := c.client.Do(req)
 	if err != nil {
-		logger.LogAction(logger.Auditor, "DevinOracle", "FAILED", "Devin API unreachable. Falling back to Claude.")
+		c.logger.Error("Devin API unreachable. Falling back to Claude.", zap.String("actor", "Auditor"), zap.String("action", "DevinOracle"), zap.Error(err))
 		return c.AnalyzeWithModel(ctx, contextStr, resourceID, ModelClaude45)
 	}
 	defer resp.Body.Close()
@@ -142,12 +147,12 @@ func (c *LegacyOpenRouterClient) AnalyzeWithDevin(ctx context.Context, contextSt
 	}
 
 	if err := json.Unmarshal(body, &result); err != nil {
-		logger.LogAction(logger.Auditor, "DevinOracle", "FAILED", "Devin response parsing failed. Falling back to Claude.")
+		c.logger.Error("Devin response parsing failed. Falling back to Claude.", zap.String("actor", "Auditor"), zap.String("action", "DevinOracle"), zap.Error(err))
 		return c.AnalyzeWithModel(ctx, contextStr, resourceID, ModelClaude45)
 	}
 
 	latency := time.Since(start)
-	logger.LogFullAction(logger.Auditor, "DevinOracle", "COMPLETED", fmt.Sprintf("Oracle consulted | Latency: %v", latency), latency.Milliseconds(), 5000)
+	c.logger.Info("Oracle consulted", zap.String("actor", "Auditor"), zap.String("action", "DevinOracle"), zap.Duration("latency", latency))
 
 	return result.Analysis, nil
 }
@@ -196,7 +201,7 @@ func (c *LegacyOpenRouterClient) AnalyzeWithModel(ctx context.Context, contextSt
 
 		req.Header.Set("Authorization", "Bearer "+c.APIKey)
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("HTTP-Referer", "https://github.com/talos-guardian")
+		req.Header.Set("HTTP-Referer", "https://github.com/Xover-Official/Xover")
 
 		resp, err := c.client.Do(req)
 		if err != nil {
@@ -235,7 +240,7 @@ func (c *LegacyOpenRouterClient) AnalyzeWithModel(ctx context.Context, contextSt
 
 		if len(chatResp.Choices) > 0 {
 			latency := time.Since(start)
-			logger.LogFullAction(logger.Architect, "AIRunning", "COMPLETED", fmt.Sprintf("Model: %s | Latency: %v", model, latency), latency.Milliseconds(), 500)
+			c.logger.Info("AI analysis complete", zap.String("actor", "Architect"), zap.String("model", model), zap.Duration("latency", latency))
 			return chatResp.Choices[0].Message.Content, nil
 		}
 	}

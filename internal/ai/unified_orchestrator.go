@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/analytics"
-	"github.com/project-atlas/atlas/internal/cloud"
+	"github.com/Xover-Official/Xover/internal/analytics"
+	"github.com/Xover-Official/Xover/internal/cloud"
 	"go.uber.org/zap"
 )
 

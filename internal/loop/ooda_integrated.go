@@ -6,12 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/ai"
-	"github.com/project-atlas/atlas/internal/analytics"
-	"github.com/project-atlas/atlas/internal/cloud"
-	"github.com/project-atlas/atlas/internal/config"
-	"github.com/project-atlas/atlas/internal/logger"
-	"github.com/project-atlas/atlas/internal/persistence"
+	"github.com/Xover-Official/Xover/internal/ai"
+	"github.com/Xover-Official/Xover/internal/analytics"
+	"github.com/Xover-Official/Xover/internal/cloud"
+	"github.com/Xover-Official/Xover/internal/config"
+	"github.com/Xover-Official/Xover/internal/logger"
+	"github.com/Xover-Official/Xover/internal/persistence"
 	"go.uber.org/zap"
 )
 

@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/ai"
-	"github.com/project-atlas/atlas/internal/cloud"
-	"github.com/project-atlas/atlas/internal/engine"
-	"github.com/project-atlas/atlas/internal/idempotency"
-	"github.com/project-atlas/atlas/internal/logger"
-	"github.com/project-atlas/atlas/internal/risk"
+	"github.com/Xover-Official/Xover/internal/ai"
+	"github.com/Xover-Official/Xover/internal/cloud"
+	"github.com/Xover-Official/Xover/internal/engine"
+	"github.com/Xover-Official/Xover/internal/idempotency"
+	"github.com/Xover-Official/Xover/internal/logger"
+	"github.com/Xover-Official/Xover/internal/risk"
 )
 
 // IsIndieForceWindow checks if current time is in the Indie-Force shutdown window (12 AM - 6 AM)

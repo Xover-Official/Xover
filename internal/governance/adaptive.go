@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-atlas/atlas/internal/learning"
+	"github.com/Xover-Official/Xover/internal/learning"
 )
 
 // AdaptiveTrainer optimizes policies based on outcomes

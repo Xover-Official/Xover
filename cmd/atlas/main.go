@@ -12,12 +12,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/ai"
-	"github.com/project-atlas/atlas/internal/analytics"
-	"github.com/project-atlas/atlas/internal/config"
-	"github.com/project-atlas/atlas/internal/logger" // Updated
-	"github.com/project-atlas/atlas/internal/loop"
-	"github.com/project-atlas/atlas/internal/persistence"
+	"github.com/Xover-Official/Xover/internal/ai"
+	"github.com/Xover-Official/Xover/internal/analytics"
+	"github.com/Xover-Official/Xover/internal/config"
+	"github.com/Xover-Official/Xover/internal/logger" // Updated
+	"github.com/Xover-Official/Xover/internal/loop"
+	"github.com/Xover-Official/Xover/internal/persistence"
 	"go.uber.org/zap"
 )
 

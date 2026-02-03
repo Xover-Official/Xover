@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/project-atlas/atlas/internal/cloud"
-	"github.com/project-atlas/atlas/internal/logger"
+	"github.com/Xover-Official/Xover/internal/cloud"
+	"github.com/Xover-Official/Xover/internal/logger"
 )
 
 type Scheduler struct{}
